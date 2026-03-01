@@ -9,6 +9,9 @@ const path = require('path');
 const { exec, spawn } = require('child_process');
 const os = require('os');
 
+// Integração com Banco de Dados SQLite
+const db = require('./database');
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
@@ -203,33 +206,73 @@ function parseLatexErrors(log) {
     return errors;
 }
 
-// Save project endpoint
-app.post('/api/project/save', (req, res) => {
-    const { project_data, filename } = req.body;
-    const projectsDir = path.join(os.homedir(), 'BlockTeX_Projects');
-    if (!fs.existsSync(projectsDir)) fs.mkdirSync(projectsDir, { recursive: true });
+// ────────────────────────────────────────────────────────────
+// API de Múltiplos Projetos e Banco de Dados
+// ────────────────────────────────────────────────────────────
 
-    const sanitizedName = (filename || 'untitled').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filePath = path.join(projectsDir, `${sanitizedName}.btx`);
-    fs.writeFileSync(filePath, JSON.stringify(project_data, null, 2), 'utf8');
-    res.json({ success: true, path: filePath });
+// Salvar/Criar Projeto
+app.post('/api/project/save', async (req, res) => {
+    try {
+        const { project_data } = req.body;
+        // Assegurar ID para novos projetos que não têm
+        if (!project_data.id) {
+            project_data.id = uuidv4();
+        }
+
+        const result = await db.saveProject(project_data);
+        res.json({ success: true, id: result.id, message: 'Projeto salvo no banco de dados' });
+    } catch (err) {
+        console.error('Erro ao salvar:', err);
+        res.status(500).json({ error: 'Erro interno no banco de dados' });
+    }
 });
 
-// Load project endpoint
-app.get('/api/project/load/:filename', (req, res) => {
-    const projectsDir = path.join(os.homedir(), 'BlockTeX_Projects');
-    const filePath = path.join(projectsDir, `${req.params.filename}.btx`);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Project not found' });
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    res.json({ success: true, data });
+// Carregar Projeto (por ID)
+app.get('/api/project/load/:id', async (req, res) => {
+    try {
+        const data = await db.getProject(req.params.id);
+        if (!data) return res.status(404).json({ error: 'Project not found' });
+        res.json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ error: 'Database fetch error' });
+    }
 });
 
-// List projects
-app.get('/api/projects', (req, res) => {
-    const projectsDir = path.join(os.homedir(), 'BlockTeX_Projects');
-    if (!fs.existsSync(projectsDir)) return res.json({ projects: [] });
-    const files = fs.readdirSync(projectsDir).filter(f => f.endsWith('.btx'));
-    res.json({ projects: files.map(f => ({ name: f.replace('.btx', ''), filename: f })) });
+// Listar Projetos
+app.get('/api/projects', async (req, res) => {
+    try {
+        const projects = await db.listProjects();
+        res.json({ projects });
+    } catch (err) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Deletar Projeto
+app.delete('/api/project/:id', async (req, res) => {
+    try {
+        await db.deleteProject(req.params.id);
+        res.json({ success: true, id: req.params.id });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete' });
+    }
+});
+
+// Migrar legado (do localStorage para SQLite)
+app.post('/api/project/migrate', async (req, res) => {
+    try {
+        const { projects } = req.body; // array de object project_data legados
+        const migratedIds = [];
+        for (const p of projects || []) {
+            if (!p.id) p.id = uuidv4();
+            await db.saveProject(p);
+            migratedIds.push(p.id);
+        }
+        res.json({ success: true, migrated: migratedIds });
+    } catch (err) {
+        console.error('Migration error', err);
+        res.status(500).json({ error: 'Migration failed' });
+    }
 });
 
 const PORT = process.env.PORT || 3001;

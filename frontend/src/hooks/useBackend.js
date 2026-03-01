@@ -103,13 +103,23 @@ export function useBackend() {
     }, []);
 
     // Save project
-    const saveProject = useCallback(async (projectData, filename) => {
+    const saveProject = useCallback(async (projectData) => {
         try {
             const res = await fetchWithTimeout(`${API_BASE}/project/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ project_data: projectData, filename }),
+                body: JSON.stringify({ project_data: projectData }),
             }, 10000);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, []);
+
+    // Load single project
+    const loadProject = useCallback(async (id) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/project/load/${id}`, {}, 8000);
             return await res.json();
         } catch (e) {
             return { success: false, error: e.message };
@@ -127,7 +137,35 @@ export function useBackend() {
         }
     }, []);
 
+    // Delete project
+    const deleteProject = useCallback(async (id) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/project/${id}`, { method: 'DELETE' }, 8000);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, []);
+
+    // Migrate old localStorage projects
+    const migrateLegacyProjects = useCallback(async (projects) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/project/migrate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projects }),
+            }, 20000);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, []);
+
     const clearLogs = useCallback(() => setLogs([]), []);
 
-    return { status, logs, compile, saveProject, listProjects, clearLogs, checkHealth };
+    return {
+        status, logs, compile,
+        saveProject, loadProject, listProjects, deleteProject, migrateLegacyProjects,
+        clearLogs, checkHealth
+    };
 }
