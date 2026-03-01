@@ -15,16 +15,16 @@ echo "╚═══════════════════════�
 echo ""
 
 # Check Node.js
-if ! command -v node &> /dev/null; then
+if ! command -v node > /dev/null 2>&1; then
   echo "❌ Node.js não encontrado. Instale em: https://nodejs.org"
   exit 1
 fi
 echo "✅ Node.js $(node --version)"
 
 # Check LaTeX
-if command -v pdflatex &> /dev/null; then
+if command -v pdflatex > /dev/null 2>&1; then
   echo "✅ pdflatex disponível"
-elif command -v lualatex &> /dev/null; then
+elif command -v lualatex > /dev/null 2>&1; then
   echo "✅ lualatex disponível"
 else
   echo "⚠️  LaTeX não encontrado. Instale com: sudo apt install texlive-full"
