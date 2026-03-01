@@ -98,7 +98,7 @@ export default function Editor() {
       if ((e.metaKey || e.ctrlKey)) {
         if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); store.undo(); }
         if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { e.preventDefault(); store.redo(); }
-        if (e.key === 's') { e.preventDefault(); handleSaveAndExit(); }
+        if (e.key === 's') { e.preventDefault(); handleSave(); }
         if (e.key === 'p') { e.preventDefault(); setShowPreview(p => !p); }
       }
     };
@@ -161,16 +161,16 @@ export default function Editor() {
     }
   }, [store]);
 
-  const handleSaveAndExit = useCallback(async () => {
+  const handleSave = useCallback(async () => {
     showNotification('Salvando...', 'success');
     const saveData = store.get();
     const result = await saveProject(saveData);
     if (result.success) {
       if (id === 'new') {
-        // redireciona para dar replace na URL
-        navigate(`/`, { replace: true });
+        // Redireciona para o ID definitivo para não criar duplicatas em futuros saves
+        navigate(`/editor/${result.id}`, { replace: true });
       } else {
-        navigate(`/`);
+        showNotification('Projeto salvo com sucesso!', 'success');
       }
     } else {
       showNotification(`Erro ao salvar: ${result.error}`, 'error');
@@ -279,9 +279,9 @@ export default function Editor() {
             <input type="file" accept=".btx,.json" style={{ display: 'none' }} onChange={handleImportBtx} />
           </label>
 
-          {/* Save & Exit */}
-          <button className="btn btn-secondary" onClick={handleSaveAndExit}>
-            💾 Salvar & Sair
+          {/* Save */}
+          <button className="btn btn-secondary" onClick={handleSave}>
+            💾 Salvar
           </button>
 
           {/* Export .tex */}
