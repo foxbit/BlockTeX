@@ -44,3 +44,6 @@ Thumbs.db
 # Generated output (keep only source)
 output/
 tmp/
+
+# Documentation
+PRD/

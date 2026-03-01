@@ -87,25 +87,27 @@ npm run dev
 ## Funcionalidades Implementadas
 
 ### Sistema de Blocos
+- **TipTap WYSIWYG Editor** integrado com suporte a formatação avançada
+- **Menu Drawer flutuante** elegante para edição focada do conteúdo
 - **8 tipos de bloco**: Capa, Capítulo, Texto, Citação, Imagem, Código, Índice, Separador
 - **Drag-and-drop** para reordenamento
-- **Editor Markdown inline** em cada bloco
 - **Colapso/expansão** de blocos individuais
 - **Duplicação e exclusão** de blocos
 - **Indicadores visuais** de quebra de página
 
 ### Configurações Globais
 - Formato físico: A4, A5, 16×23cm, 15×21cm, US Letter, customizado
-- Páginas espelhadas (`twoside`) com margens medianiz/externa
+- Páginas espelhadas (`twoside`) com controle assíncrono rigoroso do estilo `plain`
+- Cabeçalhos personalizáveis (espelhados para páginas Ímpares/Pares) via pacote `fancyhdr`
 - Sangria de 3mm (`bleed`) para impressão
-- Motor de compilação: `pdflatex` ou `lualatex`
+- Motor de compilação: `pdflatex` ou `lualatex` com suporte UTF-8 estendido
 - Tipografia: Palatino, Garamond, Libertine, Source Serif, Crimson, etc.
 - Margens individuais (superior, inferior, interna, externa)
 
 ### Propriedades por Bloco
-- Quebra de página: nenhuma / antes / isolada (sempre ímpar, `\cleardoublepage`)
-- Visibilidade no Índice (`toc_visible`)
-- Configuração de captura de títulos para o TOC (de H1 a H4)
+- Quebra de página estrita baseada no Layout `oneside` vs `twoside` (garantindo `\cleardoublepage` isoladas corretas)
+- Visibilidade no Índice (`toc_visible`) gerenciada assincronamente (evita heranças de TOC)
+- Sistema de **Checkboxes para o TOC** (Captura seletiva de H1 protegido, H2 e H3 configuráveis)
 - Cor de destaque para citações
 - Largura e legenda para imagens
 

@@ -1,31 +1,16 @@
 import { useState, useRef, useCallback } from 'react';
 import { BLOCK_TYPE_META, BLOCK_TYPES } from '../lib/blockTypes.js';
 
-// ─── Simple Markdown Editor with Textarea ───────────────────
-function MarkdownEditor({ value, onChange, onBlur }) {
-    return (
-        <div className="editor-wrapper">
-            <textarea
-                style={{
-                    width: '100%',
-                    minHeight: '120px',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--text-primary)',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '13px',
-                    lineHeight: '1.6',
-                    padding: '12px',
-                    border: 'none',
-                    outline: 'none',
-                    resize: 'vertical',
-                }}
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                onBlur={onBlur}
-                spellCheck={false}
-            />
-        </div>
-    );
+// ─── Markdown Preview / Stats Helper ───────────────────────────
+function getReadingTime(text) {
+    const words = text.trim().split(/\s+/).length;
+    const minutes = Math.ceil(words / 200);
+    return `${minutes} min`;
+}
+
+function getWordCount(text) {
+    if (!text.trim()) return 0;
+    return text.trim().split(/\s+/).length;
 }
 
 // ─── Single Block Card ───────────────────────────────────────
@@ -34,8 +19,7 @@ export function BlockCard({
     index,
     isSelected,
     onSelect,
-    onContentChange,
-    onContentBlur,
+    onEditContent,
     onDelete,
     onDuplicate,
     onMoveUp,
@@ -216,11 +200,27 @@ export function BlockCard({
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-default)' }} />
                             </div>
                         ) : (
-                            <MarkdownEditor
-                                value={block.content}
-                                onChange={(val) => onContentChange(block.id, val)}
-                                onBlur={() => onContentBlur && onContentBlur(block.id)}
-                            />
+                            <div className="block-content-summary" onClick={() => onEditContent(block.id)}>
+                                <div className="summary-preview">
+                                    {getContentPreview() || 'Bloco vazio. Clique para escrever.'}
+                                </div>
+                                <div className="summary-stats">
+                                    <span className="stat-pill" title="Contagem de palavras">
+                                        📝 {getWordCount(block.content || '')} palavras
+                                    </span>
+                                    <span className="stat-pill" title="Tempo de leitura estimado">
+                                        ⏱️ {getReadingTime(block.content || '')}
+                                    </span>
+                                    {block.config?.toc_visible && (
+                                        <span className="stat-pill" title="Visível no sumário">
+                                            📑 No Sumário
+                                        </span>
+                                    )}
+                                </div>
+                                <button className="btn btn-secondary btn-edit-overlay">
+                                    ✍️ Editar Conteúdo
+                                </button>
+                            </div>
                         )}
                     </div>
                 )}
@@ -234,8 +234,7 @@ export function Canvas({
     blocks,
     selectedId,
     onSelect,
-    onContentChange,
-    onContentBlur,
+    onEditContent,
     onDelete,
     onDuplicate,
     onMove,
@@ -325,8 +324,7 @@ export function Canvas({
                         index={index}
                         isSelected={selectedId === block.id}
                         onSelect={onSelect}
-                        onContentChange={onContentChange}
-                        onContentBlur={onContentBlur}
+                        onEditContent={onEditContent}
                         onDelete={onDelete}
                         onDuplicate={onDuplicate}
                         onMoveUp={handleMoveUp}

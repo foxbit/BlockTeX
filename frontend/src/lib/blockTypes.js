@@ -86,7 +86,7 @@ export const BLOCK_CATEGORIES = [
     },
     {
         label: 'Conteúdo',
-        types: [BLOCK_TYPES.CONTENT, BLOCK_TYPES.QUOTE, BLOCK_TYPES.IMAGE, BLOCK_TYPES.CODE],
+        types: [BLOCK_TYPES.CONTENT],
     },
 ];
 

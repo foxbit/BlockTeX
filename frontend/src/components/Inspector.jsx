@@ -138,6 +138,65 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
             <div className="divider" />
 
             <div className="inspector-section">
+                <div className="inspector-section-title">Cabeçalhos</div>
+                <div className="form-group">
+                    <label className="form-label">{global_setup.mirror ? 'Página Par (Esquerda)' : 'Todas as Páginas'}</label>
+                    <select
+                        className="form-select"
+                        value={global_setup.headerStyleEven || 'chapter'}
+                        onChange={e => onUpdateSetup({ headerStyleEven: e.target.value })}
+                    >
+                        <option value="none">Nenhum</option>
+                        <option value="title">Título do Livro</option>
+                        <option value="author">Nome do Autor</option>
+                        <option value="chapter">Capítulo Atual</option>
+                        <option value="custom">Texto Personalizado...</option>
+                    </select>
+                </div>
+                {global_setup.headerStyleEven === 'custom' && (
+                    <div className="form-group">
+                        <input
+                            className="form-input"
+                            placeholder="Seu texto aqui..."
+                            value={global_setup.headerCustomEven || ''}
+                            onChange={e => onUpdateSetup({ headerCustomEven: e.target.value })}
+                        />
+                    </div>
+                )}
+
+                {global_setup.mirror && (
+                    <>
+                        <div className="form-group" style={{ marginTop: '12px' }}>
+                            <label className="form-label">Página Ímpar (Direita)</label>
+                            <select
+                                className="form-select"
+                                value={global_setup.headerStyleOdd || 'chapter'}
+                                onChange={e => onUpdateSetup({ headerStyleOdd: e.target.value })}
+                            >
+                                <option value="none">Nenhum</option>
+                                <option value="title">Título do Livro</option>
+                                <option value="author">Nome do Autor</option>
+                                <option value="chapter">Capítulo Atual</option>
+                                <option value="custom">Texto Personalizado...</option>
+                            </select>
+                        </div>
+                        {global_setup.headerStyleOdd === 'custom' && (
+                            <div className="form-group">
+                                <input
+                                    className="form-input"
+                                    placeholder="Seu texto aqui..."
+                                    value={global_setup.headerCustomOdd || ''}
+                                    onChange={e => onUpdateSetup({ headerCustomOdd: e.target.value })}
+                                />
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+
+            <div className="divider" />
+
+            <div className="inspector-section">
                 <div className="inspector-section-title">Tipografia & Motor</div>
                 <div className="form-group">
                     <label className="form-label">Motor LaTeX</label>
@@ -232,32 +291,29 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
             {block.type === BLOCK_TYPES.CONTENT || block.type === BLOCK_TYPES.CHAPTER ? (
                 <div className="inspector-section">
                     <div className="inspector-section-title">Captura no Índice</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <div className="form-group">
-                            <label className="form-label">Nível de (H)</label>
-                            <select
-                                className="form-select"
-                                value={config.toc_scan?.from || 1}
-                                onChange={e => onUpdateConfig({ toc_scan: { ...config.toc_scan, from: parseInt(e.target.value) } })}
-                            >
-                                <option value={1}>H1 (capítulo)</option>
-                                <option value={2}>H2 (seção)</option>
-                                <option value={3}>H3 (subseção)</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Até (H)</label>
-                            <select
-                                className="form-select"
-                                value={config.toc_scan?.to || 2}
-                                onChange={e => onUpdateConfig({ toc_scan: { ...config.toc_scan, to: parseInt(e.target.value) } })}
-                            >
-                                <option value={1}>H1</option>
-                                <option value={2}>H2</option>
-                                <option value={3}>H3</option>
-                                <option value={4}>H4</option>
-                            </select>
-                        </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-primary)', opacity: 0.6, cursor: 'not-allowed' }}>
+                            <input type="checkbox" checked={true} disabled style={{ accentColor: 'var(--accent-indigo)' }} />
+                            H1 (Título do capítulo)
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={config.toc_headers?.h2 ?? true}
+                                onChange={e => onUpdateConfig({ toc_headers: { ...(config.toc_headers || { h1: true, h2: true, h3: false }), h2: e.target.checked } })}
+                                style={{ accentColor: 'var(--accent-indigo)', cursor: 'pointer' }}
+                            />
+                            H2 (Subtítulo do capítulo)
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={config.toc_headers?.h3 ?? false}
+                                onChange={e => onUpdateConfig({ toc_headers: { ...(config.toc_headers || { h1: true, h2: true, h3: false }), h3: e.target.checked } })}
+                                style={{ accentColor: 'var(--accent-indigo)', cursor: 'pointer' }}
+                            />
+                            H3 (Título de parágrafo)
+                        </label>
                     </div>
                 </div>
             ) : null}

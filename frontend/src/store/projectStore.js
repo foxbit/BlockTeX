@@ -22,6 +22,10 @@ export const DEFAULT_PROJECT = {
         outerMargin: '20mm',
         topMargin: '25mm',
         bottomMargin: '20mm',
+        headerStyleEven: 'chapter', // 'none', 'title', 'author', 'chapter', 'custom'
+        headerCustomEven: '',
+        headerStyleOdd: 'chapter', // 'none', 'title', 'author', 'chapter', 'custom'
+        headerCustomOdd: '',
     },
     blocks: [],
 };
@@ -42,7 +46,7 @@ export function createBlock(type) {
             width: '0.8',
         },
         config: {
-            toc_scan: { from: 1, to: 2 },
+            toc_headers: { h1: true, h2: true, h3: false },
             toc_visible: true,
             page_break: 'none', // 'none' | 'before' | 'isolated'
         },

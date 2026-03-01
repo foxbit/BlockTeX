@@ -8,6 +8,7 @@ import { NewProjectModal, SaveModal, ExportTexModal } from './components/Modals.
 import { ProjectStore, DEFAULT_PROJECT } from './store/projectStore.js';
 import { generateTex } from './lib/latexGenerator.js';
 import { useBackend } from './hooks/useBackend.js';
+import { TipTapDrawer } from './components/TipTapDrawer.jsx';
 
 function App() {
   // ── Store via useRef: sobrevive ao HMR do Vite ──────────────
@@ -33,6 +34,7 @@ function App() {
   const [compiling, setCompiling] = useState(false);
   const [pdfBase64, setPdfBase64] = useState(null);
   const [modal, setModal] = useState(null); // 'new' | 'save' | 'tex' | null
+  const [editingBlockId, setEditingBlockId] = useState(null);
   const [notification, setNotification] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
@@ -77,6 +79,11 @@ function App() {
   const selectedBlock = useMemo(
     () => project.blocks.find(b => b.id === selectedBlockId) || null,
     [project.blocks, selectedBlockId]
+  );
+
+  const editingBlock = useMemo(
+    () => project.blocks.find(b => b.id === editingBlockId) || null,
+    [project.blocks, editingBlockId]
   );
 
   const showNotification = useCallback((msg, type = 'success') => {
@@ -368,8 +375,7 @@ function App() {
             blocks={project.blocks}
             selectedId={selectedBlockId}
             onSelect={setSelectedBlockId}
-            onContentChange={(id, val) => store.updateBlockContent(id, val)}
-            onContentBlur={(id) => store.commitBlockContent(id)}
+            onEditContent={(id) => setEditingBlockId(id)}
             onDelete={(id) => {
               store.removeBlock(id);
               if (selectedBlockId === id) setSelectedBlockId(null);
@@ -414,8 +420,20 @@ function App() {
         onToggle={() => setShowLog(l => !l)}
         onClear={clearLogs}
       />
+
+      {/* TipTap Editor Drawer */}
+      <TipTapDrawer
+        block={editingBlock}
+        open={!!editingBlockId}
+        onClose={() => setEditingBlockId(null)}
+        onSave={(id, content) => {
+          store.updateBlockContent(id, content);
+          store.commitBlockContent(id);
+        }}
+      />
     </div>
   );
 }
 
 export default App;
+// Triggering HMR to clear cached useMemo state for plain pagestyle mirrors
