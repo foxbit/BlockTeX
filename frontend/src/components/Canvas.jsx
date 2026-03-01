@@ -199,6 +199,36 @@ export function BlockCard({
                             <div style={{ padding: '8px 0' }}>
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-default)' }} />
                             </div>
+                        ) : block.type === BLOCK_TYPES.DEPOIMENTO ? (
+                            <div className="block-content-summary" onClick={() => onEditContent(block.id)}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                    {block.style_variables?.imageBase64 ? (
+                                        <img
+                                            src={block.style_variables.imageBase64}
+                                            style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '4px' }}
+                                        />
+                                    ) : (
+                                        <div style={{ width: '48px', height: '48px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', borderRadius: '4px' }}>
+                                            👤
+                                        </div>
+                                    )}
+                                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '12px' }}>{block.style_variables?.personName || 'Sem Nome'}</div>
+                                        <div style={{ fontSize: '11px', fontStyle: 'italic', color: 'var(--text-muted)' }}>"{block.style_variables?.quote || 'Sem Citação'}"</div>
+                                    </div>
+                                </div>
+                                <div className="summary-preview" style={{ marginTop: '12px' }}>
+                                    {getContentPreview() || 'Bloco vazio. Clique para escrever o texto principal.'}
+                                </div>
+                                <div className="summary-stats">
+                                    <span className="stat-pill" title="Contagem de palavras">
+                                        📝 {getWordCount(block.content || '')} palavras
+                                    </span>
+                                </div>
+                                <button className="btn btn-secondary btn-edit-overlay">
+                                    ✍️ Editar Texto
+                                </button>
+                            </div>
                         ) : (
                             <div className="block-content-summary" onClick={() => onEditContent(block.id)}>
                                 <div className="summary-preview">

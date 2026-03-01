@@ -10,6 +10,7 @@ import { ProjectStore, DEFAULT_PROJECT } from '../store/projectStore.js';
 import { generateTex } from '../lib/latexGenerator.js';
 import { useBackend } from '../hooks/useBackend.js';
 import { TipTapDrawer } from '../components/TipTapDrawer.jsx';
+import { BLOCK_TYPES } from '../lib/blockTypes.js';
 
 export default function Editor() {
   const { id } = useParams();
@@ -132,7 +133,14 @@ export default function Editor() {
     setPdfBase64(null);
     clearLogs();
 
-    const result = await compile(texContent, project.global_setup.engine || 'pdflatex');
+    const compileAssets = {};
+    project.blocks.forEach(block => {
+      if (block.type === BLOCK_TYPES.DEPOIMENTO && block.style_variables?.imageBase64) {
+        compileAssets[`depo_img_${block.id}.jpg`] = block.style_variables.imageBase64;
+      }
+    });
+
+    const result = await compile(texContent, project.global_setup.engine || 'pdflatex', compileAssets);
 
     setCompiling(false);
 

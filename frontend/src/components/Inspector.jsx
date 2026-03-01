@@ -341,6 +341,84 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                 </div>
             )}
 
+            {block.type === BLOCK_TYPES.DEPOIMENTO && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Dados do Depoimento</div>
+
+                    <div className="form-group">
+                        <label className="form-label">Nome da Pessoa</label>
+                        <input
+                            className="form-input"
+                            value={style_variables.personName || ''}
+                            onChange={e => onUpdateStyleVars({ personName: e.target.value })}
+                            placeholder="Ex: Maria"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Citação / Frase Fixa (Negrito)</label>
+                        <input
+                            className="form-input"
+                            value={style_variables.quote || ''}
+                            onChange={e => onUpdateStyleVars({ quote: e.target.value })}
+                            placeholder='Ex: "Sigo por paixão"'
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Intro (Itálico)</label>
+                        <textarea
+                            className="form-input"
+                            value={style_variables.intro || ''}
+                            onChange={e => onUpdateStyleVars({ intro: e.target.value })}
+                            placeholder="Texto introdutório menor..."
+                            rows={3}
+                        />
+                    </div>
+
+                    <div className="divider" style={{ margin: '16px 0' }} />
+                    <div className="inspector-section-title">Imagem (Retrato)</div>
+
+                    <div className="form-group">
+                        <label className="form-label">Upload de Imagem</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({ imageBase64: ev.target.result });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {style_variables.imageBase64 && (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label">Largura do Quadro (ex: 0.3 ou 4cm)</label>
+                                <input
+                                    className="form-input"
+                                    value={style_variables.frameWidth || '4cm'}
+                                    onChange={e => onUpdateStyleVars({ frameWidth: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Tamanho/Zoom na renderização (ex: \textwidth ou 6cm)</label>
+                                <input
+                                    className="form-input"
+                                    value={style_variables.imageZoom || '\\textwidth'}
+                                    onChange={e => onUpdateStyleVars({ imageZoom: e.target.value })}
+                                />
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
             {block.type === BLOCK_TYPES.IMAGE && (
                 <div className="inspector-section">
                     <div className="inspector-section-title">Configurações da Imagem</div>

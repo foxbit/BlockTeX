@@ -567,6 +567,45 @@ function blockToLatex(block, mirror = false) {
             break;
         }
 
+        case BLOCK_TYPES.DEPOIMENTO: {
+            const {
+                personName = '',
+                quote = '',
+                intro = '',
+                imageBase64,
+                frameWidth = '0.35\\textwidth',
+                imageZoom = '\\textwidth'
+            } = style_variables;
+
+            // Tratamento das larguras (caso sejam números raw, converte para \textwidth, senão usa o texto do user direct)
+            const leftWidthStr = frameWidth.includes('c') || frameWidth.includes('m') || frameWidth.includes('in') || frameWidth.includes('ex') || frameWidth.includes('tt') || frameWidth.includes('\\')
+                ? frameWidth : `${frameWidth}\\textwidth`;
+
+            // Assume the right side takes up the rest
+            tex += `\\vspace{1em}\n\\noindent\n`;
+
+            if (imageBase64) {
+                tex += `\\begin{minipage}[t]{${leftWidthStr}}\n`;
+                tex += `\\vspace{0pt}\n`;
+                tex += `\\includegraphics[width=${imageZoom}]{assets/depo_img_${block.id}.jpg}\n`;
+                tex += `\\end{minipage}%\n`;
+                tex += `\\hfill\n`;
+                tex += `\\begin{minipage}[t]{\\dimexpr\\textwidth-${leftWidthStr}-0.05\\textwidth\\relax}\n`;
+                tex += `\\vspace{0pt}\n`;
+            } else {
+                tex += `\\begin{minipage}[t]{\\textwidth}\n`;
+            }
+
+            if (personName) tex += `\\MakeUppercase{${escapeLatex(personName)}}\\\\[0.5em]\n`;
+            if (quote) tex += `\\textbf{\\Large ${escapeLatex(quote)}}\\\\[0.5em]\n`;
+            if (intro) tex += `\\textit{${escapeLatex(intro)}}\n`;
+
+            tex += `\\end{minipage}\n\n`;
+            tex += `\\vspace{1.5em}\n`;
+            tex += mdToLatex(content, config) + '\n';
+            break;
+        }
+
         default:
             tex += mdToLatex(content, config) + '\n';
     }

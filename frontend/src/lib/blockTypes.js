@@ -10,6 +10,7 @@ export const BLOCK_TYPES = {
     TOC: 'toc',
     SEPARATOR: 'separator',
     COVER: 'cover',
+    DEPOIMENTO: 'depoimento',
 };
 
 export const BLOCK_TYPE_META = {
@@ -77,6 +78,14 @@ export const BLOCK_TYPE_META = {
         color: '#6366f1',
         default_content: '# Título do Livro\n\n**Subtítulo opcional**\n\n_Autor_',
     },
+    [BLOCK_TYPES.DEPOIMENTO]: {
+        label: 'Depoimento',
+        icon: '🗣️',
+        iconClass: 'icon-depoimento',
+        tagClass: 'tag-orange',
+        color: '#f97316',
+        default_content: 'Meu nome é Maria Antônia Soares Seguins, popularmente conhecida como Maria Seguins... [adicione o texto aqui]',
+    },
 };
 
 export const BLOCK_CATEGORIES = [
@@ -86,7 +95,7 @@ export const BLOCK_CATEGORIES = [
     },
     {
         label: 'Conteúdo',
-        types: [BLOCK_TYPES.CONTENT],
+        types: [BLOCK_TYPES.CONTENT, BLOCK_TYPES.DEPOIMENTO],
     },
 ];
 
