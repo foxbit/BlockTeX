@@ -1,10 +1,29 @@
 import { BLOCK_TYPES, PAPER_SIZES } from './blockTypes.js';
 
 // ============================================================
+// Remove emojis e símbolos pictográficos que o pdflatex não suporta.
+// IMPORTANTE: não remover caracteres latinos acentuados (á, ã, é, etc.)
+// ============================================================
+function stripEmojis(str) {
+    if (!str) return str;
+    return str
+        // Planos suplementares: U+10000–U+10FFFF (emojis, símbolos extras)
+        // Requer flag 'u' para funcionar com surrogate pairs
+        .replace(/[\u{10000}-\u{10FFFF}]/gu, '')
+        // Bloco de Emoticons e Símbolos Miscelâneos no BMP (cuidado: não usar ranges amplos!)
+        // Apenas os blocos confirmados de emoji/pictogramas:
+        .replace(/[\uD800-\uDFFF]/g, '')   // Surrogate halves soltos
+        .replace(/[\u{1F000}-\u{1FFFF}]/gu, '') // Emojis estendidos (redundante com linha 1, mas seguro)
+        // Variation selectors (modificadores de emoji, invisíveis mas problemáticos)
+        .replace(/[\uFE00-\uFE0F]/g, '');
+}
+
+// ============================================================
 // Escapa caracteres LaTeX especiais (EXCETO math modes)
 // ============================================================
 function escapeLatex(str, insideMath = false) {
     if (insideMath) return str; // Não escapar dentro de math
+    str = stripEmojis(str);
     return str
         .replace(/\\/g, '\\textbackslash{}')
         .replace(/&/g, '\\&')
@@ -19,6 +38,7 @@ function escapeLatex(str, insideMath = false) {
 
 // Escapa apenas para uso em argumentos de comandos LaTeX (títulos, etc.)
 function escapeLatexTitle(str) {
+    str = stripEmojis(str);
     return str
         .replace(/&/g, '\\&')
         .replace(/%/g, '\\%')
@@ -76,7 +96,7 @@ function tableToLatex(tableText) {
 // Converte inline markdown (bold, italic, code, math, links)
 // ============================================================
 function inlineToLatex(text) {
-    let t = text;
+    let t = stripEmojis(text);
 
     // Protege math inline $...$ antes de escapar
     const mathPlaceholders = [];
@@ -96,13 +116,31 @@ function inlineToLatex(text) {
         return `\x00CODE${codePlaceholders.length - 1}\x00`;
     });
 
-    // Escapa caracteres LaTeX no texto normal
+    // Protege entidades HTML com placeholders antes de qualquer escape.
+    // Isso evita que "&gt;" vire "\&gt;" (& escapado como \&, quebrando o LaTeX)
+    // e que os "\" gerados (ex: \textgreater{}) sejam re-escapados abaixo.
+    const entityPlaceholders = [];
+    t = t.replace(/&(amp|lt|gt|quot|apos);/g, (match) => {
+        const map = {
+            '&amp;':  '\\&',
+            '&lt;':   '\\textless{}',
+            '&gt;':   '\\textgreater{}',
+            '&quot;': '"',
+            '&apos;': "'",
+        };
+        entityPlaceholders.push(map[match] || match);
+        return `\x00ENTITY${entityPlaceholders.length - 1}\x00`;
+    });
+
+    // Escapa caracteres LaTeX no texto normal.
+    // ATENÇÃO: '\' deve ser escapado PRIMEIRO, pois os escapes
+    // seguintes introduzem '\' e não devem ser re-processados.
     t = t
+        .replace(/\\/g, '\\textbackslash{}')
         .replace(/&/g, '\\&')
         .replace(/%(?!\x00)/g, '\\%')
         .replace(/#/g, '\\#')
-        .replace(/~/g, '\\textasciitilde{}')
-        .replace(/\\/g, '\\textbackslash{}');
+        .replace(/~/g, '\\textasciitilde{}');
 
     // Bold + Italic combinado (***texto***)
     t = t.replace(/\*\*\*(.+?)\*\*\*/g, (_, x) => `\\textbf{\\textit{${x}}}`);
@@ -119,6 +157,7 @@ function inlineToLatex(text) {
     );
 
     // Restaura placeholders
+    t = t.replace(/\x00ENTITY(\d+)\x00/g, (_, i) => entityPlaceholders[+i]);
     t = t.replace(/\x00CODE(\d+)\x00/g, (_, i) => codePlaceholders[+i]);
     t = t.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathPlaceholders[+i]);
 
@@ -262,10 +301,13 @@ function mdToLatex(md, config = {}) {
         }
 
         // ── Blockquote ─────────────────────────────────────────
-        if (line.startsWith('> ')) {
+        // Suporta tanto '> ' literal quanto '&gt; ' (entidade HTML do editor)
+        if (line.startsWith('> ') || line.startsWith('&gt; ')) {
+            const prefix = line.startsWith('&gt; ') ? '&gt; ' : '> ';
+            const prefixLen = prefix.length;
             const quoteLines = [];
-            while (i < lines.length && lines[i].startsWith('> ')) {
-                quoteLines.push(lines[i].slice(2));
+            while (i < lines.length && (lines[i].startsWith('> ') || lines[i].startsWith('&gt; '))) {
+                quoteLines.push(lines[i].slice(prefixLen));
                 i++;
             }
             output.push(`\\begin{quote}`);
@@ -308,6 +350,61 @@ function mdToLatex(md, config = {}) {
 }
 
 // ============================================================
+// Retorna configuração de pacotes/estilos para cada tema visual
+// ============================================================
+function getThemeConfig(theme) {
+    const themes = {
+        default: {
+            fontPkg:      '',
+            extraPkgs:    '',
+            linespread:   null,
+            sectionStyle: '',
+        },
+        editorial: {
+            fontPkg:      '\\usepackage{palatino}',
+            extraPkgs:    '\\usepackage[final,tracking=true,kerning=true,spacing=true]{microtype}',
+            linespread:   '1.25',
+            sectionStyle: [
+                '\\usepackage{titlesec}',
+                '\\titleformat{\\section}[hang]{\\large\\bfseries}{}{0pt}{}[\\vspace{2pt}\\hrule\\vspace{2pt}]',
+                '\\titleformat{\\subsection}[hang]{\\normalsize\\itshape}{}{0pt}{}',
+            ].join('\n'),
+        },
+        technical: {
+            fontPkg:      '\\usepackage{bookman}',
+            extraPkgs:    '\\usepackage[final]{microtype}',
+            linespread:   '1.15',
+            sectionStyle: [
+                '\\usepackage{titlesec}',
+                '\\titleformat{\\section}[block]{\\large\\bfseries\\sffamily}{}{0pt}{}[\\vspace{1pt}\\hrule]',
+                '\\titleformat{\\subsection}[block]{\\normalsize\\bfseries\\sffamily}{}{0pt}{}',
+            ].join('\n'),
+        },
+        minimal: {
+            fontPkg:      '\\usepackage{charter}',
+            extraPkgs:    '',
+            linespread:   '1.35',
+            sectionStyle: [
+                '\\usepackage{titlesec}',
+                '\\titleformat{\\section}[hang]{\\large\\scshape}{}{0pt}{}',
+                '\\titleformat{\\subsection}[hang]{\\normalsize\\itshape}{}{0pt}{}',
+            ].join('\n'),
+        },
+        corporate: {
+            fontPkg:      '\\usepackage{helvet}\n\\renewcommand{\\familydefault}{\\sfdefault}',
+            extraPkgs:    '\\usepackage[final]{microtype}',
+            linespread:   '1.1',
+            sectionStyle: [
+                '\\usepackage{titlesec}',
+                '\\titleformat{\\section}[block]{\\large\\bfseries\\sffamily}{}{0pt}{}',
+                '\\titleformat{\\subsection}[block]{\\normalsize\\bfseries\\sffamily}{}{0pt}{}',
+            ].join('\n'),
+        },
+    };
+    return themes[theme] || themes.default;
+}
+
+// ============================================================
 // Generate LaTeX preamble from global settings
 // ============================================================
 function generatePreamble(globalSetup, metadata) {
@@ -318,6 +415,7 @@ function generatePreamble(globalSetup, metadata) {
         baseSize = '11pt',
         bleed = false,
         engine = 'pdflatex',
+        theme = 'default',
         customWidth,
         customHeight,
         innerMargin = '25mm',
@@ -325,6 +423,10 @@ function generatePreamble(globalSetup, metadata) {
         topMargin = '25mm',
         bottomMargin = '20mm',
     } = globalSetup;
+
+    // Resolve tema visual — o campo `font` manual tem prioridade sobre o tema
+    const themeConfig = getThemeConfig(theme);
+    const fontIsManual = font !== 'default';
 
     const { title = 'Documento', author = 'Autor', date = '\\today' } = metadata || {};
 
@@ -352,20 +454,26 @@ function generatePreamble(globalSetup, metadata) {
     geoOpts.push('headheight=14pt');
 
     // ── Font package ─────────────────────────────────────────
+    // Fonte manual (campo `font`) tem prioridade; se não definida, usa a do tema
     let fontPkg = '';
     if (engine === 'lualatex') {
         fontPkg = '\\usepackage{fontspec}\n';
-        if (font !== 'default') fontPkg += `\\setmainfont{${font}}\n`;
+        if (fontIsManual) fontPkg += `\\setmainfont{${font}}\n`;
+        else if (themeConfig.fontPkg) fontPkg += themeConfig.fontPkg + '\n';
     } else {
         const fontMap = {
-            palatino: '\\usepackage{palatino}',
-            helvet: '\\usepackage{helvet}\n\\renewcommand{\\familydefault}{\\sfdefault}',
-            garamond: '\\usepackage{garamondx}',
-            libertine: '\\usepackage{libertine}',
+            palatino:       '\\usepackage{palatino}',
+            helvet:         '\\usepackage{helvet}\n\\renewcommand{\\familydefault}{\\sfdefault}',
+            garamond:       '\\usepackage{garamondx}',
+            libertine:      '\\usepackage{libertine}',
             sourceserifpro: '\\usepackage[default]{sourceserifpro}',
-            crimson: '\\usepackage{crimson}',
+            crimson:        '\\usepackage{crimson}',
         };
-        if (fontMap[font]) fontPkg = fontMap[font] + '\n';
+        if (fontIsManual && fontMap[font]) {
+            fontPkg = fontMap[font] + '\n';
+        } else if (!fontIsManual && themeConfig.fontPkg) {
+            fontPkg = themeConfig.fontPkg + '\n';
+        }
     }
 
     // ── Header/footer style ──────────────────────────────────
@@ -407,6 +515,9 @@ function generatePreamble(globalSetup, metadata) {
         '',
         '% ─── Typography ─────────────────────────────────────',
         fontPkg.trim() || '% (fonte padrão LaTeX)',
+        themeConfig.linespread ? `\\linespread{${themeConfig.linespread}}` : '',
+        themeConfig.extraPkgs  ? themeConfig.extraPkgs : '',
+        themeConfig.sectionStyle ? themeConfig.sectionStyle : '',
         '',
         '% ─── Mathematics ────────────────────────────────────',
         '\\usepackage{amsmath}',
@@ -452,7 +563,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\pagestyle{fancy}',
         '\\fancyhf{}',
         ...fancyLines,
-        '\\renewcommand{\\headrulewidth}{0.4pt}',
+        '\\renewcommand{\\headrulewidth}{0pt}',
         '\\fancypagestyle{plain}{',
         '  \\fancyhf{}',
         mirror ? '  \\fancyfoot[LE,RO]{\\thepage}' : '  \\fancyfoot[C]{\\thepage}',
@@ -483,17 +594,14 @@ function generatePreamble(globalSetup, metadata) {
         '\\setlength{\\parindent}{0pt}',
         '\\setlength{\\parskip}{8pt}',
         '',
-        '% ─── Title ──────────────────────────────────────────',
+        '% ─── Title metadata (usada pelo bloco CAPA e hyperref) ──',
         `\\title{${escapeLatexTitle(title)}}`,
         `\\author{${escapeLatexTitle(author)}}`,
         `\\date{${date}}`,
         '',
         '\\begin{document}',
         '',
-        '\\maketitle',
-        mirror ? '\\cleardoublepage' : '',
-        '',
-    ].filter(Boolean).join('\n');
+    ].filter(line => line !== null && line !== undefined).join('\n');
 
     return preamble;
 }
@@ -512,9 +620,9 @@ function blockToLatex(block, mirror = false) {
 
     // Page break: isolated = cleardoublepage (starts on right/odd page)
     if (page_break === 'isolated') {
-        tex += '\\cleardoublepage\n';
+        tex += '\\cleardoublepage\n\n';
     } else if (page_break === 'before') {
-        tex += `${breakCmd}\n`;
+        tex += `${breakCmd}\n\n`;
     }
 
     switch (type) {

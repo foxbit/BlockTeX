@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES } from '../lib/blockTypes.js';
+import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES, DOCUMENT_THEMES } from '../lib/blockTypes.js';
 
 // ─── Toggle ──────────────────────────────────────────────────
 function Toggle({ value, onChange }) {
@@ -192,6 +192,53 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         )}
                     </>
                 )}
+            </div>
+
+            <div className="divider" />
+
+            <div className="inspector-section">
+                <div className="inspector-section-title">Tema do Documento</div>
+                <div className="form-group">
+                    <label className="form-label">Estilo Visual</label>
+                    <select
+                        className="form-select"
+                        value={global_setup.theme || 'default'}
+                        onChange={e => {
+                            // Reseta a fonte manual ao trocar tema, para o tema definir a fonte
+                            onUpdateSetup({ theme: e.target.value, font: 'default' });
+                        }}
+                    >
+                        {DOCUMENT_THEMES.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                    </select>
+                </div>
+                {(() => {
+                    const selected = DOCUMENT_THEMES.find(t => t.value === (global_setup.theme || 'default'));
+                    return selected ? (
+                        <div style={{ marginTop: '6px' }}>
+                            <span style={{
+                                display: 'inline-block',
+                                fontSize: '10px',
+                                fontFamily: 'var(--font-mono)',
+                                background: 'var(--bg-tertiary)',
+                                color: 'var(--accent-indigo)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: '4px',
+                                padding: '2px 6px',
+                                marginBottom: '6px',
+                            }}>
+                                {selected.font}
+                            </span>
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                                {selected.description}
+                            </p>
+                        </div>
+                    ) : null;
+                })()}
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '8px 0 0', opacity: 0.6 }}>
+                    A seleção de "Família Tipográfica" abaixo sobrescreve a fonte do tema.
+                </p>
             </div>
 
             <div className="divider" />

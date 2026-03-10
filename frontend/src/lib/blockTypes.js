@@ -125,3 +125,36 @@ export const LATEX_ENGINES = [
     { label: 'pdfLaTeX (Rápido)', value: 'pdflatex' },
     { label: 'LuaLaTeX (Fontes TrueType/OpenType)', value: 'lualatex' },
 ];
+
+export const DOCUMENT_THEMES = [
+    {
+        value: 'default',
+        label: 'Padrão (LaTeX Clássico)',
+        font: 'Computer Modern',
+        description: 'Computer Modern, estilo acadêmico tradicional.',
+    },
+    {
+        value: 'editorial',
+        label: 'Editorial',
+        font: 'Palatino',
+        description: 'Palatino com microtype, entrelinhamento amplo. Ideal para livros e ensaios.',
+    },
+    {
+        value: 'technical',
+        label: 'Técnico',
+        font: 'Bookman',
+        description: 'Bookman com microtype e títulos marcados. Ideal para manuais e documentação.',
+    },
+    {
+        value: 'minimal',
+        label: 'Minimalista',
+        font: 'Charter',
+        description: 'Charter com amplo espaço entre linhas. Leitura limpa e elegante.',
+    },
+    {
+        value: 'corporate',
+        label: 'Corporativo',
+        font: 'Helvetica',
+        description: 'Helvetica sans-serif, compacto e direto. Ideal para relatórios.',
+    },
+];

@@ -101,8 +101,11 @@ npm run dev
 - Cabeçalhos personalizáveis (espelhados para páginas Ímpares/Pares) via pacote `fancyhdr`
 - Sangria de 3mm (`bleed`) para impressão
 - Motor de compilação: `pdflatex` ou `lualatex` com suporte UTF-8 estendido
-- Tipografia: Palatino, Garamond, Libertine, Source Serif, Crimson, etc.
+- Tipografia: Palatino, Bookman, Charter, Helvetica, Computer Modern
 - Margens individuais (superior, inferior, interna, externa)
+- **Temas visuais de documento** (5 presets): Padrão, Editorial, Técnico, Minimalista, Corporativo
+  - Cada tema define fonte, entrelinhamento e estilo de títulos automaticamente
+  - Seleção de "Família Tipográfica" no Inspector sobrescreve a fonte do tema
 
 ### Propriedades por Bloco
 - Quebra de página estrita baseada no Layout `oneside` vs `twoside` (garantindo `\cleardoublepage` isoladas corretas)
@@ -117,6 +120,9 @@ npm run dev
 - Logs de compilação em **tempo real via WebSocket**
 - Mapeamento de erros com número de linha
 - Download do PDF gerado
+- **PDF começa diretamente no primeiro bloco** — capa automática removida (use o bloco Capa quando quiser)
+- Linha separadora do cabeçalho removida por padrão
+- Tratamento robusto de emojis e entidades HTML (`&gt;`, `&lt;`, `&amp;`) no conversor Markdown→LaTeX
 
 ### IDE Features
 - **Preview HTML**: Aproximação visual imediata (sem LaTeX)
@@ -142,6 +148,7 @@ npm run dev
     "paper": "a5",
     "mirror": true,
     "font": "default",
+    "theme": "default",
     "baseSize": "11pt",
     "engine": "pdflatex",
     "innerMargin": "25mm",
@@ -229,3 +236,6 @@ Implementação completa das especificações do `PRD/PRD BlockTeX v2.md`:
 - ✅ Paginação profissional (odd/even, `\cleardoublepage`)
 - ✅ Gestão de assets e sanitização de nomes
 - ✅ Fallback de preview HTML
+- ✅ Temas visuais de documento (5 presets com fonte + tipografia coordenadas)
+- ✅ Remoção da capa automática — PDF 100% controlado pelos blocos
+- ✅ Suporte robusto a entidades HTML e emojis no conversor MD→LaTeX
