@@ -82,6 +82,26 @@ npm install
 npm run dev
 ```
 
+### Aplicativo Desktop (Electron)
+
+Você pode compilar o BlockTeX como um aplicativo nativo para Windows (.exe) ou Linux (.AppImage/.deb).
+
+```bash
+# Na raiz do projeto, instale as dependências:
+npm install
+
+# Modo Desenvolvimento (Abre a janela Electron)
+npm run electron:dev
+
+# Build para Windows (.exe) - Pode requerer Wine no Linux
+npm run electron:build:win
+
+# Build para Linux (.AppImage e .deb)
+npm run electron:build:linux
+```
+
+Os instaladores compilados serão salvos na pasta `dist-electron/`.
+
 ---
 
 ## Funcionalidades Implementadas
