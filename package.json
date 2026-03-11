@@ -1,0 +1,66 @@
+{
+  "name": "blocktex",
+  "version": "1.0.0",
+  "description": "BlockTeX — Editor visual de documentos LaTeX",
+  "main": "electron/main.js",
+  "scripts": {
+    "electron:dev": "concurrently --kill-others \"npm run dev --prefix frontend\" \"wait-on http://localhost:5173 && cross-env ELECTRON_DEV=true electron .\"",
+    "electron:preview": "npm run build --prefix frontend && electron .",
+    "electron:build:linux": "npm run build --prefix frontend && electron-builder --linux",
+    "electron:build:win": "npm run build --prefix frontend && electron-builder --win",
+    "electron:build:all": "npm run build --prefix frontend && electron-builder --linux --win",
+    "postinstall": "electron-rebuild -f -w sqlite3 --module-dir backend"
+  },
+  "build": {
+    "appId": "com.foxbit.blocktex",
+    "productName": "BlockTeX",
+    "copyright": "Copyright © 2025 Foxbit",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "electron/build-resources"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "!**/node_modules/.cache",
+      "!**/.git"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": ["**/*", "!node_modules/.cache/**"]
+      }
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office",
+      "icon": "frontend/public/icon.png"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "frontend/public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "frontend/public/icon.ico",
+      "uninstallerIcon": "frontend/public/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "frontend/public/icon.icns",
+      "category": "public.app-category.productivity"
+    }
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^7.2.0"
+  }
+}

@@ -4,7 +4,24 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const dbDir = path.join(os.homedir(), 'BlockTeX_Data');
+// ─── Diretório de dados ───────────────────────────────────────────────
+// Dentro do Electron: usa o userData adequado ao SO
+// (Linux: ~/.config/blocktex | Windows: %APPDATA%/blocktex)
+// Fora do Electron (modo web/dev): usa ~/BlockTeX_Data
+function getDataDir() {
+    try {
+        // Tenta usar a API do Electron se disponível
+        const { app } = require('electron');
+        if (app && app.getPath) {
+            return app.getPath('userData');
+        }
+    } catch (_) {
+        // Não está rodando no Electron
+    }
+    return path.join(os.homedir(), 'BlockTeX_Data');
+}
+
+const dbDir = getDataDir();
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 const dbPath = path.join(dbDir, 'database.sqlite');
