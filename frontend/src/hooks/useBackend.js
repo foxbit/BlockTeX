@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 
-// Usa caminhos relativos → passa pelo proxy do Vite (evita CORS)
-// Em dev: Vite redireciona /api/* → http://localhost:3001/api/*
-const API_BASE = '/api';
+// Detecta se está rodando dentro do Electron (carregado via file://)
+// Nesse caso, não há proxy Vite e precisamos do URL absoluto do backend
+const isElectron =
+    typeof window !== 'undefined' &&
+    (window.location.protocol === 'file:' || window?.electronAPI?.isElectron === true);
+
+// Em Electron: usa URL absoluta (sem proxy)
+// Em Vite dev:  usa path relativo (proxy Vite redireciona /api → localhost:3001)
+const API_BASE = isElectron ? 'http://localhost:3001/api' : '/api';
 
 // WebSocket aponta direto para o backend (WS não passa por proxy Vite)
 const WS_HOST = 'ws://localhost:3001';
