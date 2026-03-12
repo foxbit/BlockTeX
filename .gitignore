@@ -48,6 +48,3 @@ tmp/
 # Documentation
 PRD/
 blocktex-logs/
-
-# Secrets
-backend/users.json
