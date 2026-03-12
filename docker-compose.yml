@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   meu-projeto-web:
     build:
@@ -7,6 +5,7 @@ services:
     container_name: meu-projeto-web
     ports:
       - "80:80"
+    restart: unless-stopped
     depends_on:
       - meu-projeto-api
     networks:
@@ -18,6 +17,7 @@ services:
     container_name: meu-projeto-api
     ports:
       - "3001:3001"
+    restart: unless-stopped
     env_file:
       - .env
     volumes:
