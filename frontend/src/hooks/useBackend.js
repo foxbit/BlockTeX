@@ -11,9 +11,22 @@ const WS_HOST = 'ws://localhost:3001';
 async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    const token = localStorage.getItem('blocktex_token');
+    if (token) {
+        options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        };
+    }
+
     try {
         const res = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(timer);
+        if (res.status === 401 && url !== `${API_BASE}/login`) {
+            localStorage.removeItem('blocktex_token');
+            window.location.reload();
+        }
         return res;
     } catch (e) {
         clearTimeout(timer);
@@ -51,7 +64,10 @@ export function useBackend() {
 
         const connect = () => {
             try {
-                socket = new WebSocket(WS_HOST);
+                const token = localStorage.getItem('blocktex_token');
+                if (!token) return; // Só conecta WS se tiver logado
+                
+                socket = new WebSocket(`${WS_HOST}?token=${token}`);
                 socket.onopen = () => setWs(socket);
                 socket.onmessage = (e) => {
                     try {
