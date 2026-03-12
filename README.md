@@ -43,38 +43,54 @@ BlockTeX abstrai a complexidade do LaTeX em uma interface de blocos intuitiva. V
 
 ## Pré-requisitos
 
-```bash
-# Node.js (v18+)
-node --version
+### Para rodar com Docker (Recomendado)
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-# LaTeX (recomendado: texlive-full)
-sudo apt install texlive-full
-
-# Ou versão mínima:
-sudo apt install texlive-latex-extra texlive-fonts-recommended texlive-lang-portuguese
-```
+### Para rodar local (Manual)
+- Node.js (v18+)
+- LaTeX (`sudo apt install texlive-full`)
 
 ---
 
 ## Instalação e Execução
 
-```bash
-# Clone ou navegue até o projeto
-cd /home/usuario/Documentos/BlockTeX
+### Opção 1: Via Docker (Ambiente Completo)
+A forma mais ágil de rodar contendo o NGINX, API Node e compilações de LaTeX isoladas.
 
-# Inicialização com um comando:
+1. Configure as variáveis de ambiente:
+```bash
+cp .env.example .env
+# Edite as variáveis JWT_SECRET, PORT, etc. (Opcional)
+```
+2. Inicie tudo com Docker Compose:
+```bash
+docker-compose up -d --build
+```
+A IDE estará disponível em: **http://localhost**
+
+O Docker cuidará de puxar um ambiente Node Alpine otimizado com TeX Live e hospedar tudo atrás de um proxy NGINX rodando na porta 80.
+
+---
+
+### Opção 2: Local Script Rápido
+Uma maneira rápida caso tenha os [Pré-requisitos Livres](#para-rodar-local-manual).
+
+```bash
+# Inicialização com um script integrado:
 ./start.sh
 ```
-
 A IDE estará disponível em: **http://localhost:5173**
 
-### Manual (separado)
+---
+
+### Opção 3: Modo Inicialização Manual (Desenvolvimento)
 
 ```bash
 # Terminal 1 — Backend
 cd backend
 npm install
-node server.js
+npm run dev
 
 # Terminal 2 — Frontend
 cd frontend

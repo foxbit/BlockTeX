@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 // Em dev: Vite redireciona /api/* → http://localhost:3001/api/*
 const API_BASE = '/api';
 
-// WebSocket aponta direto para o backend (WS não passa por proxy Vite)
-const WS_HOST = 'ws://localhost:3001';
+// WebSocket aponta com base no ambiente (dev=localhost:3001, prod=proxy via nginx em /ws)
+const isDev = import.meta.env.DEV;
+const WS_HOST = isDev ? 'ws://localhost:3001' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 // Helper: fetch com timeout configurável
 async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
