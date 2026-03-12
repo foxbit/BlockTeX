@@ -12,9 +12,36 @@ const os = require('os');
 // Integração com Banco de Dados SQLite
 const db = require('./database');
 
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const url = require('url');
+const { authenticate, SECRET_KEY } = require('./auth');
+
+
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+    const parsedUrl = url.parse(request.url, true);
+    const token = parsedUrl.query.token;
+
+    if (!token) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+    }
+
+    try {
+        jwt.verify(token, SECRET_KEY);
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    } catch (err) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+    }
+});
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -41,6 +68,31 @@ function broadcast(data) {
 const WORK_DIR = path.join(os.tmpdir(), 'blocktex');
 if (!fs.existsSync(WORK_DIR)) fs.mkdirSync(WORK_DIR, { recursive: true });
 
+// Login endpoint
+app.post('/api/login', (req, res) => {
+    const { email, password } = req.body;
+    let users = [];
+    try {
+        users = JSON.parse(fs.readFileSync(path.join(__dirname, 'users.json'), 'utf8'));
+    } catch (err) {
+        console.error('Error reading users.json', err);
+        return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+
+    const user = users.find(u => u.email === email);
+    if (!user) {
+        return res.status(401).json({ error: 'Email ou senha inválidos.' });
+    }
+
+    const isValidPassword = bcrypt.compareSync(password, user.password);
+    if (!isValidPassword) {
+        return res.status(401).json({ error: 'Email ou senha inválidos.' });
+    }
+
+    const token = jwt.sign({ email: user.email }, SECRET_KEY, { expiresIn: '7d' });
+    res.json({ success: true, token });
+});
+
 // Check if LaTeX is installed
 app.get('/api/health', (req, res) => {
     exec('which pdflatex || which lualatex', (err, stdout) => {
@@ -61,7 +113,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Compile LaTeX endpoint
-app.post('/api/compile', async (req, res) => {
+app.post('/api/compile', authenticate, async (req, res) => {
     const { tex_content, engine = 'pdflatex', job_id = uuidv4(), assets = {} } = req.body;
 
     if (!tex_content) {
@@ -211,7 +263,7 @@ function parseLatexErrors(log) {
 // ────────────────────────────────────────────────────────────
 
 // Salvar/Criar Projeto
-app.post('/api/project/save', async (req, res) => {
+app.post('/api/project/save', authenticate, async (req, res) => {
     try {
         const { project_data } = req.body;
         // Assegurar ID para novos projetos que não têm
@@ -228,7 +280,7 @@ app.post('/api/project/save', async (req, res) => {
 });
 
 // Carregar Projeto (por ID)
-app.get('/api/project/load/:id', async (req, res) => {
+app.get('/api/project/load/:id', authenticate, async (req, res) => {
     try {
         const data = await db.getProject(req.params.id);
         if (!data) return res.status(404).json({ error: 'Project not found' });
@@ -239,7 +291,7 @@ app.get('/api/project/load/:id', async (req, res) => {
 });
 
 // Listar Projetos
-app.get('/api/projects', async (req, res) => {
+app.get('/api/projects', authenticate, async (req, res) => {
     try {
         const projects = await db.listProjects();
         res.json({ projects });
@@ -249,7 +301,7 @@ app.get('/api/projects', async (req, res) => {
 });
 
 // Deletar Projeto
-app.delete('/api/project/:id', async (req, res) => {
+app.delete('/api/project/:id', authenticate, async (req, res) => {
     try {
         await db.deleteProject(req.params.id);
         res.json({ success: true, id: req.params.id });
@@ -259,7 +311,7 @@ app.delete('/api/project/:id', async (req, res) => {
 });
 
 // Migrar legado (do localStorage para SQLite)
-app.post('/api/project/migrate', async (req, res) => {
+app.post('/api/project/migrate', authenticate, async (req, res) => {
     try {
         const { projects } = req.body; // array de object project_data legados
         const migratedIds = [];
