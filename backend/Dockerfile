@@ -7,6 +7,10 @@ RUN apk update && apk add --no-cache \
     texlive-luatex \
     texlive-xetex \
     texmf-dist \
+    texmf-dist-latexextra \
+    texmf-dist-fontsextra \
+    texmf-dist-langportuguese \
+    texmf-dist-fontsrecommended \
     tzdata \
     fontconfig \
     mkfontscale \
