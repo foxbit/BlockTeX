@@ -5,6 +5,18 @@ import { Markdown } from 'tiptap-markdown';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 
+// Sanitiza a saída Markdown do TipTap, removendo entidades HTML
+// que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
+// Isso mantém o conteúdo armazenado como Markdown puro.
+function sanitizeMarkdown(md) {
+    return md
+        .replace(/&gt;/g, '>')
+        .replace(/&lt;/g, '<')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
+}
+
 const MenuBar = ({ editor }) => {
     if (!editor) return null;
 
@@ -162,7 +174,7 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
         ],
         content: block?.content || '',
         onUpdate: ({ editor }) => {
-            const markdownOutput = editor.storage.markdown.getMarkdown();
+            const markdownOutput = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
             setContent(markdownOutput);
             setHasUnsavedChanges(true);
         },
@@ -171,7 +183,7 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
     // Re-inject content when switching blocks if the editor instance survived
     useEffect(() => {
         if (editor && block && open) {
-            const currentMarkdown = editor.storage.markdown.getMarkdown();
+            const currentMarkdown = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
             if (block.content !== currentMarkdown) {
                 editor.commands.setContent(block.content || '');
             }

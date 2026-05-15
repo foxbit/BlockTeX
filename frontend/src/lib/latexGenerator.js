@@ -116,9 +116,13 @@ function inlineToLatex(text) {
         return `\x00CODE${codePlaceholders.length - 1}\x00`;
     });
 
-    // Protege entidades HTML com placeholders antes de qualquer escape.
-    // Isso evita que "&gt;" vire "\&gt;" (& escapado como \&, quebrando o LaTeX)
-    // e que os "\" gerados (ex: \textgreater{}) sejam re-escapados abaixo.
+    // Underline: o TipTap serializa <u> como HTML inline (Markdown não tem underline).
+    // Converte para \underline{} do LaTeX antes de qualquer escape.
+    t = t.replace(/<u>(.+?)<\/u>/g, (_, x) => `\\underline{${x}}`);
+
+    // [LEGACY] Protege entidades HTML remanescentes de projetos antigos.
+    // Novos conteúdos já são sanitizados na saída do TipTap (sanitizeMarkdown),
+    // mas projetos .btx salvos anteriormente podem conter &gt; etc.
     const entityPlaceholders = [];
     t = t.replace(/&(amp|lt|gt|quot|apos);/g, (match) => {
         const map = {
