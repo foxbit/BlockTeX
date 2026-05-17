@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function NewProjectModal({ onConfirm, onCancel }) {
     const [title, setTitle] = useState('Meu Livro');
@@ -81,43 +81,17 @@ export function NewProjectModal({ onConfirm, onCancel }) {
     );
 }
 
-export function SaveModal({ projectTitle, onConfirm, onCancel }) {
-    const [filename, setFilename] = useState(
-        projectTitle?.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'meu_livro'
-    );
 
-    return (
-        <div className="modal-overlay">
-            <div className="modal" style={{ maxWidth: '400px' }}>
-                <div className="modal-header">
-                    <h2 className="modal-title">💾 Salvar Projeto</h2>
-                    <button className="btn btn-ghost btn-icon" onClick={onCancel}>✕</button>
-                </div>
-                <div className="modal-body">
-                    <div className="form-group">
-                        <label className="form-label">Nome do arquivo (.btx)</label>
-                        <input
-                            className="form-input"
-                            value={filename}
-                            onChange={e => setFilename(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '_'))}
-                        />
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                        Será salvo em: ~/BlockTeX_Projects/{filename}.btx
-                    </div>
-                </div>
-                <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
-                    <button className="btn btn-primary" onClick={() => onConfirm(filename)}>💾 Salvar</button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 export function ExportTexModal({ texContent, onClose }) {
-    const blob = new Blob([texContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
+    const [url, setUrl] = useState('');
+
+    useEffect(() => {
+        const blob = new Blob([texContent], { type: 'text/plain' });
+        const objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [texContent]);
 
     return (
         <div className="modal-overlay">

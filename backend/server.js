@@ -1,6 +1,6 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const multer = require('multer');
 const { WebSocketServer } = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const http = require('http');
@@ -68,18 +68,41 @@ function broadcast(data) {
 const WORK_DIR = path.join(os.tmpdir(), 'blocktex');
 if (!fs.existsSync(WORK_DIR)) fs.mkdirSync(WORK_DIR, { recursive: true });
 
-// Login endpoint
-app.post('/api/login', (req, res) => {
-    const { email, password } = req.body;
-    let users = [];
+// Cleanup de arquivos temporários órfãos
+const cleanupOldJobs = () => {
     try {
-        users = JSON.parse(fs.readFileSync(path.join(__dirname, 'users.json'), 'utf8'));
+        if (!fs.existsSync(WORK_DIR)) return;
+        const dirs = fs.readdirSync(WORK_DIR);
+        const now = Date.now();
+        for (const dir of dirs) {
+            const dirPath = path.join(WORK_DIR, dir);
+            const stat = fs.statSync(dirPath);
+            if (now - stat.mtimeMs > 10 * 60 * 1000) {
+                fs.rmSync(dirPath, { recursive: true, force: true });
+            }
+        }
+    } catch (e) {
+        console.error('Erro no cleanup:', e);
+    }
+};
+cleanupOldJobs();
+setInterval(cleanupOldJobs, 5 * 60 * 1000);
+
+let activeCompilations = 0;
+const MAX_COMPILATIONS = 2;
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    let user;
+    try {
+        user = await db.getUserByEmail(email);
     } catch (err) {
-        console.error('Error reading users.json', err);
+        console.error('Error fetching user', err);
         return res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 
-    const user = users.find(u => u.email === email);
     if (!user) {
         return res.status(401).json({ error: 'Email ou senha inválidos.' });
     }
@@ -114,11 +137,18 @@ app.get('/api/health', (req, res) => {
 
 // Compile LaTeX endpoint
 app.post('/api/compile', authenticate, async (req, res) => {
+    if (activeCompilations >= MAX_COMPILATIONS) {
+        return res.status(429).json({ error: 'Servidor ocupado. Tente novamente em instantes.' });
+    }
+
     const { tex_content, engine = 'pdflatex', job_id = uuidv4(), assets = {} } = req.body;
 
     if (!tex_content) {
         return res.status(400).json({ error: 'tex_content is obrigatório' });
     }
+
+    activeCompilations++;
+    try {
 
     // ──── Verifica se o LaTeX está disponível ────────────────
     const latexBin = engine === 'lualatex' ? 'lualatex' : 'pdflatex';
@@ -232,6 +262,10 @@ app.post('/api/compile', authenticate, async (req, res) => {
     setTimeout(() => {
         try { fs.rmSync(jobDir, { recursive: true }); } catch (e) { }
     }, 5 * 60 * 1000);
+
+    } finally {
+        activeCompilations--;
+    }
 });
 
 

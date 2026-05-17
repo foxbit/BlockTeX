@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { generateHtmlPreview } from '../lib/latexGenerator.js';
 
 export function PreviewPanel({ open, onClose, pdfBase64, blocks, compiling }) {
@@ -8,7 +8,7 @@ export function PreviewPanel({ open, onClose, pdfBase64, blocks, compiling }) {
         if (pdfBase64) setMode('pdf');
     }, [pdfBase64]);
 
-    const htmlContent = generateHtmlPreview(blocks);
+    const htmlContent = useMemo(() => generateHtmlPreview(blocks), [blocks]);
 
     return (
         <div className={`preview-panel ${open ? 'open' : ''}`}>

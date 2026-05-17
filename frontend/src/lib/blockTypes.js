@@ -10,7 +10,7 @@ export const BLOCK_TYPES = {
     TOC: 'toc',
     SEPARATOR: 'separator',
     COVER: 'cover',
-    DEPOIMENTO: 'depoimento',
+    TESTIMONIAL: 'testimonial',
 };
 
 export const BLOCK_TYPE_META = {
@@ -78,7 +78,7 @@ export const BLOCK_TYPE_META = {
         color: '#6366f1',
         default_content: '# Título do Livro\n\n**Subtítulo opcional**\n\n_Autor_',
     },
-    [BLOCK_TYPES.DEPOIMENTO]: {
+    [BLOCK_TYPES.TESTIMONIAL]: {
         label: 'Depoimento',
         icon: '🗣️',
         iconClass: 'icon-depoimento',
@@ -95,7 +95,7 @@ export const BLOCK_CATEGORIES = [
     },
     {
         label: 'Conteúdo',
-        types: [BLOCK_TYPES.CONTENT, BLOCK_TYPES.DEPOIMENTO],
+        types: [BLOCK_TYPES.CONTENT, BLOCK_TYPES.QUOTE, BLOCK_TYPES.IMAGE, BLOCK_TYPES.CODE, BLOCK_TYPES.TESTIMONIAL],
     },
 ];
 

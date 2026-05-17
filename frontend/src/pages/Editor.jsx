@@ -108,7 +108,7 @@ export default function Editor() {
   }, [store]);
 
   // Gera o .tex a partir do estado atual do projeto (reativo)
-  const texContent = useMemo(() => generateTex(project), [project]);
+  const getTexContent = useCallback(() => generateTex(project), [project]);
 
   const selectedBlock = useMemo(
     () => project.blocks.find(b => b.id === selectedBlockId) || null,
@@ -135,11 +135,12 @@ export default function Editor() {
 
     const compileAssets = {};
     project.blocks.forEach(block => {
-      if (block.type === BLOCK_TYPES.DEPOIMENTO && block.style_variables?.imageBase64) {
+      if (block.type === BLOCK_TYPES.TESTIMONIAL && block.style_variables?.imageBase64) {
         compileAssets[`depo_img_${block.id}.jpg`] = block.style_variables.imageBase64;
       }
     });
 
+    const texContent = getTexContent();
     const result = await compile(texContent, project.global_setup.engine || 'pdflatex', compileAssets);
 
     setCompiling(false);
@@ -152,7 +153,7 @@ export default function Editor() {
       const errorMsg = result.errors?.[0]?.message || 'Erro desconhecido';
       showNotification(`❌ Erro: ${errorMsg}`, 'error');
     }
-  }, [compiling, texContent, project.global_setup.engine, compile, clearLogs, showNotification]);
+  }, [compiling, getTexContent, project.global_setup.engine, compile, clearLogs, showNotification]);
 
   // Block operations
   const handleAddBlock = useCallback((type, afterId = null) => {
@@ -231,7 +232,7 @@ export default function Editor() {
       {/* Modals */}
       {modal === 'tex' && (
         <ExportTexModal
-          texContent={texContent}
+          texContent={getTexContent()}
           onClose={() => setModal(null)}
         />
       )}
@@ -352,7 +353,7 @@ export default function Editor() {
       {/* Body */}
       <div className="app-body">
         {/* Block Library Sidebar */}
-        <div className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className={`block-library-wrapper ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <BlockLibrary
             onAddBlock={handleAddBlock}
           />
@@ -400,11 +401,11 @@ export default function Editor() {
         </div>
 
         {/* Inspector */}
-        <div className={`inspector ${inspectorCollapsed ? 'collapsed' : ''}`}>
+        <div className={`inspector-wrapper ${inspectorCollapsed ? 'collapsed' : ''}`}>
           <Inspector
             project={project}
             selectedBlock={selectedBlock}
-            texContent={texContent}
+            getTexContent={getTexContent}
             onUpdateMetadata={(m) => store.updateMetadata(m)}
             onUpdateSetup={(s) => store.updateGlobalSetup(s)}
             onUpdateConfig={(c) => selectedBlockId && store.updateBlockConfig(selectedBlockId, c)}

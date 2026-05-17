@@ -679,7 +679,7 @@ function blockToLatex(block, mirror = false) {
             break;
         }
 
-        case BLOCK_TYPES.DEPOIMENTO: {
+        case BLOCK_TYPES.TESTIMONIAL: {
             const {
                 personName = '',
                 quote = '',

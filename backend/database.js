@@ -32,7 +32,25 @@ async function getDb() {
                     key TEXT PRIMARY KEY,
                     value TEXT
                 );
+
+                CREATE TABLE IF NOT EXISTS users (
+                    email TEXT PRIMARY KEY,
+                    password TEXT NOT NULL
+                );
             `);
+            
+            try {
+                const count = await db.get('SELECT COUNT(*) as count FROM users');
+                if (count.count === 0) {
+                    const usersPath = path.join(__dirname, 'users.json');
+                    if (fs.existsSync(usersPath)) {
+                        const users = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
+                        for (const u of users) {
+                            await db.run('INSERT INTO users (email, password) VALUES (?, ?)', [u.email, u.password]);
+                        }
+                    }
+                }
+            } catch (e) { console.error('Migration error:', e); }
             return db;
         });
     }
@@ -100,6 +118,11 @@ async function setGlobalStyle(key, value) {
     await db.run('REPLACE INTO global_styles (key, value) VALUES (?, ?)', [key, JSON.stringify(value)]);
 }
 
+async function getUserByEmail(email) {
+    const db = await getDb();
+    return await db.get('SELECT * FROM users WHERE email = ?', email);
+}
+
 module.exports = {
     getDb,
     listProjects,
@@ -107,5 +130,6 @@ module.exports = {
     saveProject,
     deleteProject,
     getGlobalStyle,
-    setGlobalStyle
+    setGlobalStyle,
+    getUserByEmail
 };

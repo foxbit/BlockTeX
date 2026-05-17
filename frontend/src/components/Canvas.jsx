@@ -199,7 +199,7 @@ export function BlockCard({
                             <div style={{ padding: '8px 0' }}>
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-default)' }} />
                             </div>
-                        ) : block.type === BLOCK_TYPES.DEPOIMENTO ? (
+                        ) : block.type === BLOCK_TYPES.TESTIMONIAL ? (
                             <div className="block-content-summary" onClick={() => onEditContent(block.id)}>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                                     {block.style_variables?.imageBase64 ? (

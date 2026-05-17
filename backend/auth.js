@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET obrigatório em produção');
+}
 const SECRET_KEY = process.env.JWT_SECRET || 'blocktex-secret-random-key';
 
 function authenticate(req, res, next) {

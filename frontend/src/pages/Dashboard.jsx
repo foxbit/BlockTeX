@@ -80,15 +80,15 @@ export function Dashboard() {
     };
 
     return (
-        <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', color: 'var(--text-primary)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                <h1 style={{ fontSize: '28px', fontWeight: 'bold' }}>Projetos no Servidor</h1>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <div className="dashboard-page">
+            <div className="dashboard-header">
+                <h1 className="dashboard-title">Projetos no Servidor</h1>
+                <div className="dashboard-header-right">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: status.connected ? '#10b981' : '#f43f5e' }}></div>
                         {status.connected ? `Backend Online (Node ${status.node_version})` : 'Backend Offline'}
                     </div>
-                    <button onClick={handleCreateNew} style={{ background: 'var(--accent-indigo)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <button onClick={handleCreateNew} className="btn btn-compile">
                         + Novo Projeto
                     </button>
                 </div>
@@ -102,10 +102,10 @@ export function Dashboard() {
             )}
 
             {legacyProjectsFound.length > 0 && (
-                <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-focus)', padding: '20px', borderRadius: '8px', marginBottom: '32px' }}>
+                <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--accent-indigo)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '32px' }}>
                     <h3 style={{ marginTop: 0 }}>Projeto Local Encontrado!</h3>
                     <p style={{ color: 'var(--text-secondary)' }}>Um projeto salvo no navegador (localStorage) foi detectado. Deseja enviá-lo para o banco de dados do servidor de forma segura?</p>
-                    <button onClick={handleMigrate} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', marginTop: '12px' }}>
+                    <button onClick={handleMigrate} className="btn btn-secondary" style={{ marginTop: '12px' }}>
                         Migrar para o Servidor
                     </button>
                 </div>
@@ -114,16 +114,17 @@ export function Dashboard() {
             {loading ? (
                 <div>Carregando projetos...</div>
             ) : projects.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-secondary)', borderRadius: '12px', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', padding: '60px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', color: 'var(--text-muted)' }}>
                     <p>Nenhum projeto encontrado no banco de dados.</p>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                <div className="project-grid">
                     {projects.map(proj => (
-                        <div key={proj.id} style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border-subtle)', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }} onClick={() => handleOpenProject(proj.id)} className="project-card">
+                        <div key={proj.id} style={{ background: 'var(--bg-secondary)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }} onClick={() => handleOpenProject(proj.id)} className="project-card">
                             <button
                                 onClick={(e) => handleDeleteProject(e, proj.id)}
-                                style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px' }}
+                                className="btn-icon block-action-btn danger"
+                                style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent' }}
                                 title="Deletar Projeto"
                             >
                                 🗑

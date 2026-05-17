@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 // Usa caminhos relativos → passa pelo proxy do Vite (evita CORS)
 // Em dev: Vite redireciona /api/* → http://localhost:3001/api/*
@@ -9,11 +10,10 @@ const isDev = import.meta.env.DEV;
 const WS_HOST = isDev ? 'ws://localhost:3001' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 // Helper: fetch com timeout configurável
-async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 120000, token = null, logout = null) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const token = localStorage.getItem('blocktex_token');
     if (token) {
         options.headers = {
             ...options.headers,
@@ -25,8 +25,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
         const res = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(timer);
         if (res.status === 401 && url !== `${API_BASE}/login`) {
-            localStorage.removeItem('blocktex_token');
-            window.location.reload();
+            if (logout) logout();
         }
         return res;
     } catch (e) {
@@ -37,6 +36,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
 }
 
 export function useBackend() {
+    const { token, logout } = useAuth();
     const [status, setStatus] = useState({ connected: false, engines: {}, checking: true });
     const [ws, setWs] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -44,17 +44,17 @@ export function useBackend() {
     // Health check
     const checkHealth = useCallback(async () => {
         try {
-            const res = await fetchWithTimeout(`${API_BASE}/health`, {}, 8000);
+            const res = await fetchWithTimeout(`${API_BASE}/health`, {}, 8000, token, logout);
             const data = await res.json();
             setStatus({ connected: true, ...data, checking: false });
         } catch (e) {
             setStatus({ connected: false, checking: false, engines: {} });
         }
-    }, []);
+    }, [token, logout]);
 
     useEffect(() => {
         checkHealth();
-        const interval = setInterval(checkHealth, 15000);
+        const interval = setInterval(checkHealth, 60000);
         return () => clearInterval(interval);
     }, [checkHealth]);
 
@@ -65,7 +65,6 @@ export function useBackend() {
 
         const connect = () => {
             try {
-                const token = localStorage.getItem('blocktex_token');
                 if (!token) return; // Só conecta WS se tiver logado
                 
                 socket = new WebSocket(`${WS_HOST}?token=${token}`);
@@ -97,7 +96,7 @@ export function useBackend() {
             clearTimeout(retryTimeout);
             if (socket) socket.close();
         };
-    }, []);
+    }, [token]);
 
     // Compile
     const compile = useCallback(async (texContent, engine = 'pdflatex', assets = {}) => {
@@ -107,7 +106,7 @@ export function useBackend() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tex_content: texContent, engine, assets }),
-            }, 120000); // 2 min timeout para compilações grandes
+            }, 120000, token, logout); // 2 min timeout para compilações grandes
             const data = await res.json();
             return data;
         } catch (e) {
@@ -117,7 +116,7 @@ export function useBackend() {
             setLogs(prev => [...prev, { type: 'error', content: `❌ ${msg}`, ts: Date.now() }]);
             return { success: false, errors: [{ message: msg }] };
         }
-    }, []);
+    }, [token, logout]);
 
     // Save project
     const saveProject = useCallback(async (projectData) => {
@@ -126,43 +125,43 @@ export function useBackend() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ project_data: projectData }),
-            }, 10000);
+            }, 10000, token, logout);
             return await res.json();
         } catch (e) {
             return { success: false, error: e.message };
         }
-    }, []);
+    }, [token, logout]);
 
     // Load single project
     const loadProject = useCallback(async (id) => {
         try {
-            const res = await fetchWithTimeout(`${API_BASE}/project/load/${id}`, {}, 8000);
+            const res = await fetchWithTimeout(`${API_BASE}/project/load/${id}`, {}, 8000, token, logout);
             return await res.json();
         } catch (e) {
             return { success: false, error: e.message };
         }
-    }, []);
+    }, [token, logout]);
 
     // Load project list
     const listProjects = useCallback(async () => {
         try {
-            const res = await fetchWithTimeout(`${API_BASE}/projects`, {}, 8000);
+            const res = await fetchWithTimeout(`${API_BASE}/projects`, {}, 8000, token, logout);
             const data = await res.json();
             return data.projects || [];
         } catch {
             return [];
         }
-    }, []);
+    }, [token, logout]);
 
     // Delete project
     const deleteProject = useCallback(async (id) => {
         try {
-            const res = await fetchWithTimeout(`${API_BASE}/project/${id}`, { method: 'DELETE' }, 8000);
+            const res = await fetchWithTimeout(`${API_BASE}/project/${id}`, { method: 'DELETE' }, 8000, token, logout);
             return await res.json();
         } catch (e) {
             return { success: false, error: e.message };
         }
-    }, []);
+    }, [token, logout]);
 
     // Migrate old localStorage projects
     const migrateLegacyProjects = useCallback(async (projects) => {
@@ -171,12 +170,12 @@ export function useBackend() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ projects }),
-            }, 20000);
+            }, 20000, token, logout);
             return await res.json();
         } catch (e) {
             return { success: false, error: e.message };
         }
-    }, []);
+    }, [token, logout]);
 
     const clearLogs = useCallback(() => setLogs([]), []);
 

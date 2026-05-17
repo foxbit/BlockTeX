@@ -59,9 +59,9 @@ export function createBlock(type) {
 // ============================================================
 export class ProjectStore {
     constructor(initialProject = null) {
-        this._project = initialProject ? JSON.parse(JSON.stringify(initialProject)) : JSON.parse(JSON.stringify(DEFAULT_PROJECT));
+        this._project = initialProject ? structuredClone(initialProject) : structuredClone(DEFAULT_PROJECT);
         this._listeners = new Set();
-        this._history = [JSON.parse(JSON.stringify(this._project))];
+        this._history = [structuredClone(this._project)];
         this._historyIndex = 0;
     }
 
@@ -79,7 +79,12 @@ export class ProjectStore {
     _pushHistory() {
         // Remove any redo history
         this._history = this._history.slice(0, this._historyIndex + 1);
-        this._history.push(JSON.parse(JSON.stringify(this._project)));
+        this._history.push(structuredClone(this._project));
+        
+        const MAX_HISTORY = 50;
+        if (this._history.length > MAX_HISTORY) {
+            this._history = this._history.slice(-MAX_HISTORY);
+        }
         this._historyIndex = this._history.length - 1;
     }
 
@@ -91,7 +96,7 @@ export class ProjectStore {
     undo() {
         if (this._historyIndex > 0) {
             this._historyIndex--;
-            this._project = JSON.parse(JSON.stringify(this._history[this._historyIndex]));
+            this._project = structuredClone(this._history[this._historyIndex]);
             this._notify();
         }
     }
@@ -99,7 +104,7 @@ export class ProjectStore {
     redo() {
         if (this._historyIndex < this._history.length - 1) {
             this._historyIndex++;
-            this._project = JSON.parse(JSON.stringify(this._history[this._historyIndex]));
+            this._project = structuredClone(this._history[this._historyIndex]);
             this._notify();
         }
     }
@@ -196,7 +201,7 @@ export class ProjectStore {
     duplicateBlock(id) {
         const idx = this._project.blocks.findIndex(b => b.id === id);
         if (idx === -1) return;
-        const copy = JSON.parse(JSON.stringify(this._project.blocks[idx]));
+        const copy = structuredClone(this._project.blocks[idx]);
         copy.id = uuidv4();
         this._project.blocks.splice(idx + 1, 0, copy);
         this._pushHistory();
@@ -205,8 +210,18 @@ export class ProjectStore {
     }
 
     loadProject(projectData) {
-        this._project = JSON.parse(JSON.stringify(projectData));
-        this._history = [JSON.parse(JSON.stringify(this._project))];
+        this._project = structuredClone(projectData);
+
+        // Migração de blocos antigos
+        if (this._project.blocks) {
+            this._project.blocks.forEach(b => {
+                if (b.type === 'depoimento') {
+                    b.type = 'testimonial';
+                }
+            });
+        }
+
+        this._history = [structuredClone(this._project)];
         this._historyIndex = 0;
         this._notify();
     }

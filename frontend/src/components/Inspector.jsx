@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES, DOCUMENT_THEMES } from '../lib/blockTypes.js';
 
 // ─── Toggle ──────────────────────────────────────────────────
@@ -388,7 +388,7 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                 </div>
             )}
 
-            {block.type === BLOCK_TYPES.DEPOIMENTO && (
+            {block.type === BLOCK_TYPES.TESTIMONIAL && (
                 <div className="inspector-section">
                     <div className="inspector-section-title">Dados do Depoimento</div>
 
@@ -497,7 +497,8 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
 }
 
 // ─── LaTeX Preview Tab ───────────────────────────────────────
-function LatexTab({ texContent }) {
+function LatexTab({ getTexContent }) {
+    const texContent = useMemo(() => getTexContent(), [getTexContent]);
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -539,7 +540,7 @@ function LatexTab({ texContent }) {
 export function Inspector({
     project,
     selectedBlock,
-    texContent,
+    getTexContent,
     onUpdateMetadata,
     onUpdateSetup,
     onUpdateConfig,
@@ -583,7 +584,7 @@ export function Inspector({
                     />
                 )}
                 {tab === 'latex' && (
-                    <LatexTab texContent={texContent} />
+                    <LatexTab getTexContent={getTexContent} />
                 )}
             </div>
         </aside>

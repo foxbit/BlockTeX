@@ -1,20 +1,20 @@
 services:
-  meu-projeto-web:
+  blocktex-web:
     build:
       context: ./frontend
-    container_name: meu-projeto-web
+    container_name: blocktex-web
     ports:
       - "80:80"
     restart: unless-stopped
     depends_on:
-      - meu-projeto-api
+      - blocktex-api
     networks:
       - blocktex-net
 
-  meu-projeto-api:
+  blocktex-api:
     build:
       context: ./backend
-    container_name: meu-projeto-api
+    container_name: blocktex-api
     ports:
       - "3001:3001"
     restart: unless-stopped
