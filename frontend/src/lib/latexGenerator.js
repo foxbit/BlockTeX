@@ -676,7 +676,11 @@ function blockToLatex(block, mirror = false) {
             break;
 
         case BLOCK_TYPES.SEPARATOR:
-            tex += `\\vspace{12pt}\n\\hrule\n\\vspace{12pt}\n`;
+            if (style_variables.pageBreak) {
+                tex += `\\clearpage\n`;
+            } else {
+                tex += `\\vspace{12pt}\n\\hrule\n\\vspace{12pt}\n`;
+            }
             break;
 
         case BLOCK_TYPES.IMAGE: {

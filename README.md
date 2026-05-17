@@ -105,11 +105,12 @@ npm run dev
 ### Sistema de Blocos
 - **TipTap WYSIWYG Editor** integrado com suporte a formatação avançada
 - **Menu Drawer flutuante** elegante para edição focada do conteúdo
-- **8 tipos de bloco**: Capa, Capítulo, Texto, Citação, Imagem, Código, Índice, Separador
+- **8 tipos de bloco**: Capa, Capítulo, Texto, Citação, Imagem (Única), Grade de Imagens, Índice, Separador
 - **Drag-and-drop** para reordenamento
 - **Colapso/expansão** de blocos individuais
 - **Duplicação e exclusão** de blocos
-- **Indicadores visuais** de quebra de página
+- **Separador com Quebra de Página**: O bloco Separador agora pode ser opcionalmente marcado no Inspector como uma quebra de página (`\clearpage`), iniciando o próximo bloco em página nova sem desenhar a linha divisória.
+- **Indicadores visuais de quebra de página** e status direto no Canvas
 
 ### Configurações Globais
 - Formato físico: A4, A5, 16×23cm, 15×21cm, US Letter, customizado
@@ -128,10 +129,18 @@ npm run dev
 - Visibilidade no Índice (`toc_visible`) gerenciada assincronamente (evita heranças de TOC)
 - Sistema de **Checkboxes para o TOC** (Captura seletiva de H1 protegido, H2 e H3 configuráveis)
 - Cor de destaque para citações
-- Largura e legenda para imagens
+- **Bloco de Imagem (Única)**:
+  - **Inline**: Integração com fluxo de texto com suporte a `wrapfig` (esquerda/direita/centro/total), ajuste de largura deslizante e posição de float LaTeX.
+  - **Página exclusiva**: Modo de preenchimento (`fit`, `stretch` ou `bleed`/sangria), opção de manter proporção (`keepRatio`), âncora de recorte configurável (topo/centro/base) usando uma macro preambular avançada `\btxcoverimg` (equivalente ao `object-fit: cover` do CSS) combinada com clipping via TikZ, estilos de página e título.
+- **Bloco de Grade de Imagens (Multi-imagens)**:
+  - Distribuição automática em **3 layouts**: Empilhadas verticalmente (2 fotos), Lado a lado (2 fotos em minipage) ou Grade 2×2 (até 4 fotos).
+  - Slots de upload dinâmicos no Inspector, larguras de imagem unificadas, espaçamento configurável (pequeno, médio, grande) e legendas individuais ou coletiva.
+  - Toggle de "Página própria" para isolar a grade em uma página exclusiva com controle de quebra.
+- **Migração Automática**: Migração fluida de projetos legados contendo os blocos `image_inline`, `image_page`, `image_double` ou `image_stack` para a nova arquitetura de dois blocos unificados ao carregar o arquivo `.btx`.
 
 ### Compilação LaTeX
 - Geração do `.tex` completo com preâmbulo parametrizado
+- Inclusão inteligente do pacote `eso-pic` para sangrias em tela inteira e `tikz` para recortes de precisão
 - Envio para backend `Node.js → pdflatex/lualatex`
 - Logs de compilação em **tempo real via WebSocket**
 - Mapeamento de erros com número de linha
@@ -148,6 +157,7 @@ npm run dev
 - **Auto-save** no localStorage
 - **Salvar/Abrir** projetos `.btx`
 - **Atalhos de teclado**: Ctrl+Enter (compilar), Ctrl+S (salvar), Ctrl+P (preview)
+- **Painel Lateral Clean**: Aba LaTeX removida para focar inteiramente na produtividade. Inspector simplificado contendo apenas a aba **Bloco** (primeira aba com foco principal) e aba **Documento**.
 
 ---
 

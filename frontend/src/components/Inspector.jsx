@@ -335,6 +335,35 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
             <div className="divider" />
 
             {/* Type-specific options */}
+
+            {block.type === BLOCK_TYPES.SEPARATOR && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Separador</div>
+                    <label style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        fontSize: '12px', color: 'var(--text-primary)', cursor: 'pointer',
+                        padding: '10px', borderRadius: 'var(--radius-sm)',
+                        background: style_variables.pageBreak ? 'rgba(99,102,241,0.08)' : 'transparent',
+                        border: '1px solid',
+                        borderColor: style_variables.pageBreak ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                        transition: 'all 0.15s',
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={!!style_variables.pageBreak}
+                            onChange={e => onUpdateStyleVars({ pageBreak: e.target.checked })}
+                            style={{ accentColor: 'var(--accent-indigo)', width: '15px', height: '15px', cursor: 'pointer' }}
+                        />
+                        <div>
+                            <div style={{ fontWeight: 600, marginBottom: '2px' }}>Quebra de página</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                                O próximo bloco inicia em uma nova página. O separador visual (linha) não será exibido.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            )}
+
             {block.type === BLOCK_TYPES.CONTENT || block.type === BLOCK_TYPES.CHAPTER ? (
                 <div className="inspector-section">
                     <div className="inspector-section-title">Captura no Índice</div>
@@ -1369,12 +1398,11 @@ export function Inspector({
     onUpdateConfig,
     onUpdateStyleVars,
 }) {
-    const [tab, setTab] = useState('global');
+    const [tab, setTab] = useState('block');
 
     const tabs = [
+        { id: 'block',  label: 'Bloco' },
         { id: 'global', label: 'Documento' },
-        { id: 'block', label: 'Bloco' },
-        { id: 'latex', label: 'LaTeX' },
     ];
 
     return (
@@ -1392,13 +1420,6 @@ export function Inspector({
             </div>
 
             <div className="inspector-content">
-                {tab === 'global' && (
-                    <GlobalTab
-                        project={project}
-                        onUpdateMetadata={onUpdateMetadata}
-                        onUpdateSetup={onUpdateSetup}
-                    />
-                )}
                 {tab === 'block' && (
                     <BlockTab
                         block={selectedBlock}
@@ -1406,8 +1427,12 @@ export function Inspector({
                         onUpdateStyleVars={onUpdateStyleVars}
                     />
                 )}
-                {tab === 'latex' && (
-                    <LatexTab getTexContent={getTexContent} />
+                {tab === 'global' && (
+                    <GlobalTab
+                        project={project}
+                        onUpdateMetadata={onUpdateMetadata}
+                        onUpdateSetup={onUpdateSetup}
+                    />
                 )}
             </div>
         </aside>

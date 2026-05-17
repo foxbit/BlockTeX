@@ -196,8 +196,19 @@ export function BlockCard({
                                 </small>
                             </div>
                         ) : block.type === BLOCK_TYPES.SEPARATOR ? (
-                            <div style={{ padding: '8px 0' }}>
-                                <hr style={{ border: 'none', borderTop: '1px solid var(--border-default)' }} />
+                            <div style={{ padding: '8px 4px' }}>
+                                {block.style_variables?.pageBreak ? (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        color: 'var(--accent-indigo)', fontSize: '11px', fontWeight: 500,
+                                        padding: '5px 8px', borderRadius: 'var(--radius-sm)',
+                                        background: 'rgba(99,102,241,0.08)', border: '1px dashed var(--accent-indigo)',
+                                    }}>
+                                        <span>⏎</span> Quebra de Página
+                                    </div>
+                                ) : (
+                                    <hr style={{ border: 'none', borderTop: '1px solid var(--border-default)', margin: '4px 0' }} />
+                                )}
                             </div>
                         ) : block.type === BLOCK_TYPES.IMAGE ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px' }}>
