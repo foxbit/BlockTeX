@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES, DOCUMENT_THEMES, getFontCssFamily } from '../lib/blockTypes.js';
+import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_ENGINES, DOCUMENT_THEMES, getFontCssFamily } from '../lib/blockTypes.js';
 
 // ─── Toggle ──────────────────────────────────────────────────
 function Toggle({ value, onChange }) {
@@ -204,8 +204,7 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         className="form-select"
                         value={global_setup.theme || 'default'}
                         onChange={e => {
-                            // Reseta a fonte manual ao trocar tema, para o tema definir a fonte
-                            onUpdateSetup({ theme: e.target.value, font: 'default' });
+                            onUpdateSetup({ theme: e.target.value });
                         }}
                     >
                         {DOCUMENT_THEMES.map(t => (
@@ -236,9 +235,6 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         </div>
                     ) : null;
                 })()}
-                <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '8px 0 0', opacity: 0.6 }}>
-                    A seleção de "Família Tipográfica" abaixo sobrescreve a fonte do tema.
-                </p>
             </div>
 
             <div className="divider" />
@@ -257,18 +253,6 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         ))}
                     </select>
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Família Tipográfica</label>
-                    <select
-                        className="form-select"
-                        value={global_setup.font || 'default'}
-                        onChange={e => onUpdateSetup({ font: e.target.value })}
-                    >
-                        {LATEX_FONTS.map(f => (
-                            <option key={f.value} value={f.value}>{f.label}</option>
-                        ))}
-                    </select>
-                </div>
 
                 <div style={{
                     marginTop: '12px',
@@ -276,7 +260,7 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                     border: '1px solid var(--border-subtle)',
                     borderRadius: 'var(--radius-sm)',
                     background: 'var(--bg-elevated)',
-                    fontFamily: getFontCssFamily(global_setup.font || 'default', global_setup.theme || 'default'),
+                    fontFamily: getFontCssFamily('default', global_setup.theme || 'default'),
                     transition: 'font-family 0.3s ease',
                 }}>
                     <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '6px' }}>

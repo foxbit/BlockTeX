@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react';
+import Lottie from 'lottie-react';
+import fileSearchAnimation from '../assets/File Search.json';
 
-export function LogConsole({ logs, open, onToggle, onClear }) {
+export function LogConsole({ logs, open, onClose }) {
     const bodyRef = useRef(null);
 
     useEffect(() => {
@@ -19,48 +21,57 @@ export function LogConsole({ logs, open, onToggle, onClear }) {
         }
     };
 
-    return (
-        <div className={`log-console ${open ? 'open' : ''}`}>
-            <div className="log-header">
-                <span className="log-title">
-                    🖥 Console de Compilação
-                    {logs.length > 0 && (
-                        <span style={{ marginLeft: '8px', color: 'var(--text-muted)', fontWeight: 400 }}>
-                            ({logs.length} eventos)
-                        </span>
-                    )}
-                </span>
-                <button
-                    className="btn btn-ghost"
-                    style={{ padding: '2px 8px', fontSize: '11px' }}
-                    onClick={onClear}
-                >
-                    Limpar
-                </button>
-                <button
-                    className="btn btn-ghost btn-icon"
-                    onClick={onToggle}
-                    title={open ? 'Fechar console' : 'Abrir console'}
-                >
-                    {open ? '↓' : '↑'}
-                </button>
-            </div>
+    if (!open) return null;
 
-            {open && (
-                <div className="log-body" ref={bodyRef}>
-                    {logs.length === 0 ? (
-                        <div className="log-line" style={{ opacity: 0.5 }}>
-                            Aguardando compilação...
-                        </div>
-                    ) : (
-                        logs.map((log, i) => (
-                            <div key={i} className={getLineClass(log.type)}>
-                                {log.content}
-                            </div>
-                        ))
-                    )}
+    return (
+        <div className="modal-overlay" style={{ zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="modal" style={{ maxWidth: '600px', width: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div className="modal-header" style={{ flexDirection: 'column', alignItems: 'center', borderBottom: 'none', paddingBottom: '0' }}>
+                    <Lottie
+                        animationData={fileSearchAnimation}
+                        loop={true}
+                        style={{ width: 120, height: 120 }}
+                    />
+                    <h2 className="modal-title" style={{ marginTop: '12px', textAlign: 'center' }}>
+                        Compilando PDF...
+                    </h2>
                 </div>
-            )}
+
+                <div className="modal-body" style={{ padding: '20px' }}>
+                    <div
+                        className="log-body"
+                        ref={bodyRef}
+                        style={{
+                            background: 'var(--bg-primary)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            height: '200px',
+                            overflowY: 'auto',
+                            padding: '12px',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '12px',
+                        }}
+                    >
+                        {logs.length === 0 ? (
+                            <div className="log-line" style={{ opacity: 0.5 }}>
+                                Aguardando comunicação com o servidor...
+                            </div>
+                        ) : (
+                            logs.map((log, i) => (
+                                <div key={i} className={getLineClass(log.type)}>
+                                    {log.content}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                <div className="modal-footer" style={{ justifyContent: 'center' }}>
+                    <button className="btn btn-secondary" onClick={onClose}>
+                        Cancelar e Fechar
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

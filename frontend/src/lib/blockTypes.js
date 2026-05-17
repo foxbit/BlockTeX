@@ -124,15 +124,7 @@ export const PAPER_SIZES = [
     { label: 'Customizado', value: 'custom', width: null, height: null },
 ];
 
-export const LATEX_FONTS = [
-    { label: 'Padrão LaTeX (Computer Modern)', value: 'default' },
-    { label: 'Times New Roman (Palatino)', value: 'palatino' },
-    { label: 'Helvetica / Arial', value: 'helvet' },
-    { label: 'Garamond', value: 'garamond' },
-    { label: 'Libertine', value: 'libertine' },
-    { label: 'Source Serif Pro', value: 'sourceserifpro' },
-    { label: 'Crimson Text', value: 'crimson' },
-];
+
 
 export const LATEX_ENGINES = [
     { label: 'pdfLaTeX (Rápido)', value: 'pdflatex' },

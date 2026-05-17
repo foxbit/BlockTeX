@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES, DOCUMENT_THEMES, getFontCssFamily } from '../lib/blockTypes.js';
+import { PAPER_SIZES, LATEX_ENGINES, DOCUMENT_THEMES, getFontCssFamily } from '../lib/blockTypes.js';
 
 function Toggle({ value, onChange }) {
     return <div className={`toggle ${value ? 'on' : ''}`} onClick={() => onChange(!value)} />;
@@ -25,7 +25,6 @@ export function NewProjectModal({ onConfirm, onCancel }) {
 
     // Aba Estilo
     const [theme,  setTheme]  = useState('default');
-    const [font,   setFont]   = useState('default');
     const [engine, setEngine] = useState('pdflatex');
 
     const handleSubmit = (e) => {
@@ -33,7 +32,7 @@ export function NewProjectModal({ onConfirm, onCancel }) {
         onConfirm({
             title, author, date, paper, baseSize, mirror, bleed,
             innerMargin, outerMargin, topMargin, bottomMargin,
-            theme, font, engine,
+            theme, engine,
         });
     };
 
@@ -180,12 +179,6 @@ export function NewProjectModal({ onConfirm, onCancel }) {
                                 )}
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Família Tipográfica (sobrescreve tema)</label>
-                                <select className="form-select" value={font} onChange={e => setFont(e.target.value)}>
-                                    {LATEX_FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                                </select>
-                            </div>
-                            <div className="form-group">
                                 <label className="form-label">Motor LaTeX</label>
                                 <select className="form-select" value={engine} onChange={e => setEngine(e.target.value)}>
                                     {LATEX_ENGINES.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
@@ -198,7 +191,7 @@ export function NewProjectModal({ onConfirm, onCancel }) {
                                 border: '1px solid var(--border-subtle)',
                                 borderRadius: 'var(--radius-sm)',
                                 background: 'var(--bg-primary)',
-                                fontFamily: getFontCssFamily(font, theme),
+                                fontFamily: getFontCssFamily('default', theme),
                                 transition: 'font-family 0.3s ease',
                             }}>
                                 <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>

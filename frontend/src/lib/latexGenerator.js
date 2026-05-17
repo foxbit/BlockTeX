@@ -415,7 +415,6 @@ function generatePreamble(globalSetup, metadata) {
     const {
         paper = 'a5',
         mirror = true,
-        font = 'default',
         baseSize = '11pt',
         bleed = false,
         engine = 'pdflatex',
@@ -428,9 +427,8 @@ function generatePreamble(globalSetup, metadata) {
         bottomMargin = '20mm',
     } = globalSetup;
 
-    // Resolve tema visual — o campo `font` manual tem prioridade sobre o tema
+    // Resolve tema visual
     const themeConfig = getThemeConfig(theme);
-    const fontIsManual = font !== 'default';
 
     const { title = 'Documento', author = 'Autor', date = '\\today' } = metadata || {};
 
@@ -458,24 +456,13 @@ function generatePreamble(globalSetup, metadata) {
     geoOpts.push('headheight=14pt');
 
     // ── Font package ─────────────────────────────────────────
-    // Fonte manual (campo `font`) tem prioridade; se não definida, usa a do tema
+    // A fonte é definida exclusivamente pelo tema visual
     let fontPkg = '';
     if (engine === 'lualatex') {
         fontPkg = '\\usepackage{fontspec}\n';
-        if (fontIsManual) fontPkg += `\\setmainfont{${font}}\n`;
-        else if (themeConfig.fontPkg) fontPkg += themeConfig.fontPkg + '\n';
+        if (themeConfig.fontPkg) fontPkg += themeConfig.fontPkg + '\n';
     } else {
-        const fontMap = {
-            palatino:       '\\usepackage{palatino}',
-            helvet:         '\\usepackage{helvet}\n\\renewcommand{\\familydefault}{\\sfdefault}',
-            garamond:       '\\usepackage{garamondx}',
-            libertine:      '\\usepackage{libertine}',
-            sourceserifpro: '\\usepackage[default]{sourceserifpro}',
-            crimson:        '\\usepackage{crimson}',
-        };
-        if (fontIsManual && fontMap[font]) {
-            fontPkg = fontMap[font] + '\n';
-        } else if (!fontIsManual && themeConfig.fontPkg) {
+        if (themeConfig.fontPkg) {
             fontPkg = themeConfig.fontPkg + '\n';
         }
     }

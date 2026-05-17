@@ -43,7 +43,7 @@ export function Dashboard() {
     const handleConfirmNewProject = async ({
         title, author, date, paper, baseSize, mirror, bleed,
         innerMargin, outerMargin, topMargin, bottomMargin,
-        theme, font, engine,
+        theme, engine,
     }) => {
         const newProj = {
             ...DEFAULT_PROJECT,
@@ -52,7 +52,7 @@ export function Dashboard() {
                 ...DEFAULT_PROJECT.global_setup,
                 paper, baseSize, mirror, bleed,
                 innerMargin, outerMargin, topMargin, bottomMargin,
-                theme, font, engine,
+                theme, engine,
             },
             blocks: []
         };

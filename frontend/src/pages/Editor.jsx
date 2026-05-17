@@ -172,9 +172,12 @@ export default function Editor() {
       setPdfBase64(result.pdf_base64);
       setShowPreview(true);
       showNotification('✅ PDF compilado com sucesso!', 'success');
+      setShowLog(false); // Fecha o modal automaticamente em caso de sucesso
     } else {
       const errorMsg = result.errors?.[0]?.message || 'Erro desconhecido';
       showNotification(`❌ Erro: ${errorMsg}`, 'error');
+      // Opcional: Manter aberto se houver erro para o usuário ler, ou fechar
+      // setShowLog(false); 
     }
   }, [compiling, getTexContent, project.global_setup.engine, compile, clearLogs, showNotification]);
 
@@ -447,12 +450,11 @@ export default function Editor() {
         compiling={compiling}
       />
 
-      {/* Log Console */}
+      {/* Log Console (Modal) */}
       <LogConsole
         logs={logs}
         open={showLog}
-        onToggle={() => setShowLog(l => !l)}
-        onClear={clearLogs}
+        onClose={() => setShowLog(false)}
       />
 
       {/* TipTap Editor Drawer */}
