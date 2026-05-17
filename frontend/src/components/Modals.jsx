@@ -1,75 +1,215 @@
 import { useState, useEffect } from 'react';
+import { PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES, DOCUMENT_THEMES, getFontCssFamily } from '../lib/blockTypes.js';
+
+function Toggle({ value, onChange }) {
+    return <div className={`toggle ${value ? 'on' : ''}`} onClick={() => onChange(!value)} />;
+}
 
 export function NewProjectModal({ onConfirm, onCancel }) {
-    const [title, setTitle] = useState('Meu Livro');
-    const [author, setAuthor] = useState('');
-    const [paper, setPaper] = useState('a5');
-    const [mirror, setMirror] = useState(true);
+    const [tab, setTab] = useState('documento');
+
+    // Aba Documento
+    const [title, setTitle]       = useState('Meu Livro');
+    const [author, setAuthor]     = useState('');
+    const [date, setDate]         = useState('\\today');
+    const [paper, setPaper]       = useState('a5');
+    const [baseSize, setBaseSize] = useState('11pt');
+    const [mirror, setMirror]     = useState(true);
+    const [bleed, setBleed]       = useState(false);
+
+    // Aba Margens
+    const [innerMargin,  setInnerMargin]  = useState('25mm');
+    const [outerMargin,  setOuterMargin]  = useState('20mm');
+    const [topMargin,    setTopMargin]    = useState('25mm');
+    const [bottomMargin, setBottomMargin] = useState('20mm');
+
+    // Aba Estilo
+    const [theme,  setTheme]  = useState('default');
+    const [font,   setFont]   = useState('default');
+    const [engine, setEngine] = useState('pdflatex');
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onConfirm({ title, author, paper, mirror });
+        onConfirm({
+            title, author, date, paper, baseSize, mirror, bleed,
+            innerMargin, outerMargin, topMargin, bottomMargin,
+            theme, font, engine,
+        });
     };
+
+    const TABS = [
+        { id: 'documento', label: '📋 Documento' },
+        { id: 'margens',   label: '📐 Margens'   },
+        { id: 'estilo',    label: '🎨 Estilo'     },
+    ];
+
+    const selectedTheme = DOCUMENT_THEMES.find(t => t.value === theme);
 
     return (
         <div className="modal-overlay">
-            <form className="modal" onSubmit={handleSubmit}>
+            <form className="modal" onSubmit={handleSubmit} style={{ maxWidth: '580px' }}>
+                {/* Header */}
                 <div className="modal-header">
                     <div style={{
-                        width: '40px',
-                        height: '40px',
+                        width: '40px', height: '40px', flexShrink: 0,
                         background: 'linear-gradient(135deg, var(--accent-indigo), var(--accent-violet))',
                         borderRadius: 'var(--radius-md)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px',
-                    }}>
-                        📚
-                    </div>
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
+                    }}>📚</div>
                     <h2 className="modal-title">Novo Projeto</h2>
                     <button type="button" className="btn btn-ghost btn-icon" onClick={onCancel}>✕</button>
                 </div>
 
-                <div className="modal-body">
-                    <div className="form-group">
-                        <label className="form-label">Título do Livro *</label>
-                        <input
-                            className="form-input"
-                            value={title}
-                            onChange={e => setTitle(e.target.value)}
-                            placeholder="Ex: Introdução ao LaTeX"
-                            required
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Autor</label>
-                        <input
-                            className="form-input"
-                            value={author}
-                            onChange={e => setAuthor(e.target.value)}
-                            placeholder="Seu nome"
-                        />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div className="form-group">
-                            <label className="form-label">Formato</label>
-                            <select className="form-select" value={paper} onChange={e => setPaper(e.target.value)}>
-                                <option value="a4">A4</option>
-                                <option value="a5">A5</option>
-                                <option value="16x23">16×23cm</option>
-                                <option value="letter">US Letter</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Páginas espelhadas</label>
-                            <div
-                                className={`toggle ${mirror ? 'on' : ''}`}
-                                style={{ marginTop: '6px' }}
-                                onClick={() => setMirror(m => !m)}
-                            />
-                        </div>
-                    </div>
+                {/* Tabs */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', margin: '-4px -28px 20px' }}>
+                    {TABS.map(t => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setTab(t.id)}
+                            style={{
+                                flex: 1, padding: '10px 8px', fontSize: '12px', fontWeight: 500,
+                                border: 'none', background: 'transparent', cursor: 'pointer',
+                                borderBottom: tab === t.id ? '2px solid var(--accent-indigo)' : '2px solid transparent',
+                                color: tab === t.id ? 'var(--accent-indigo)' : 'var(--text-muted)',
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="modal-body" style={{ minHeight: '220px' }}>
+
+                    {/* ── Documento ── */}
+                    {tab === 'documento' && (
+                        <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                    <label className="form-label">Título do Livro *</label>
+                                    <input
+                                        className="form-input"
+                                        value={title}
+                                        onChange={e => setTitle(e.target.value)}
+                                        placeholder="Ex: Introdução ao LaTeX"
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Autor</label>
+                                    <input className="form-input" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Seu nome" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Data</label>
+                                    <input className="form-input" value={date} onChange={e => setDate(e.target.value)} placeholder="\today" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Tamanho do Papel</label>
+                                    <select className="form-select" value={paper} onChange={e => setPaper(e.target.value)}>
+                                        {PAPER_SIZES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Tamanho Base da Fonte</label>
+                                    <select className="form-select" value={baseSize} onChange={e => setBaseSize(e.target.value)}>
+                                        <option value="10pt">10pt — Compacto</option>
+                                        <option value="11pt">11pt — Padrão</option>
+                                        <option value="12pt">12pt — Confortável</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="toggle-group" style={{ marginTop: '8px' }}>
+                                <span className="toggle-label">📖 Páginas Espelhadas (twoside)</span>
+                                <Toggle value={mirror} onChange={setMirror} />
+                            </div>
+                            <div className="toggle-group">
+                                <span className="toggle-label">✂️ Sangria de 3mm (bleed)</span>
+                                <Toggle value={bleed} onChange={setBleed} />
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── Margens ── */}
+                    {tab === 'margens' && (
+                        <>
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 0, marginBottom: '16px' }}>
+                                Defina as margens do documento. Use unidades LaTeX: <code style={{ fontFamily: 'var(--font-mono)' }}>mm</code>, <code style={{ fontFamily: 'var(--font-mono)' }}>cm</code> ou <code style={{ fontFamily: 'var(--font-mono)' }}>in</code>.
+                            </p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                {[
+                                    { label: 'Medianiz (interna)', value: innerMargin, set: setInnerMargin, ph: '25mm' },
+                                    { label: 'Externa',            value: outerMargin, set: setOuterMargin, ph: '20mm' },
+                                    { label: 'Superior',           value: topMargin,   set: setTopMargin,   ph: '25mm' },
+                                    { label: 'Inferior',           value: bottomMargin,set: setBottomMargin,ph: '20mm' },
+                                ].map(({ label, value, set, ph }) => (
+                                    <div className="form-group" key={label}>
+                                        <label className="form-label">{label}</label>
+                                        <input className="form-input" value={value} onChange={e => set(e.target.value)} placeholder={ph} />
+                                    </div>
+                                ))}
+                            </div>
+                            <div style={{
+                                marginTop: '12px', padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+                                background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                                fontSize: '11px', color: 'var(--text-muted)',
+                            }}>
+                                💡 Com páginas espelhadas ativadas, "Medianiz" é a margem interna (lombada) e "Externa" é a borda exterior do livro.
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── Estilo ── */}
+                    {tab === 'estilo' && (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label">Estilo Visual / Tema</label>
+                                <select className="form-select" value={theme} onChange={e => setTheme(e.target.value)}>
+                                    {DOCUMENT_THEMES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </select>
+                                {selectedTheme && (
+                                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{
+                                            fontSize: '10px', fontFamily: 'var(--font-mono)',
+                                            background: 'var(--bg-secondary)', color: 'var(--accent-indigo)',
+                                            border: '1px solid var(--border-subtle)', borderRadius: '4px', padding: '2px 6px',
+                                        }}>{selectedTheme.font}</span>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{selectedTheme.description}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Família Tipográfica (sobrescreve tema)</label>
+                                <select className="form-select" value={font} onChange={e => setFont(e.target.value)}>
+                                    {LATEX_FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Motor LaTeX</label>
+                                <select className="form-select" value={engine} onChange={e => setEngine(e.target.value)}>
+                                    {LATEX_ENGINES.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+                                </select>
+                            </div>
+
+                            <div style={{
+                                marginTop: '16px',
+                                padding: '16px',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 'var(--radius-sm)',
+                                background: 'var(--bg-primary)',
+                                fontFamily: getFontCssFamily(font, theme),
+                                transition: 'font-family 0.3s ease',
+                            }}>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
+                                    A tipografia é a voz do seu texto.
+                                </div>
+                                <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: 1.5 }}>
+                                    Esta é uma pré-visualização aproximada da fonte selecionada. A renderização final no PDF (gerada pelo LaTeX) será mais precisa e elegante, com kerning e hifenização profissionais.
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="modal-footer">
@@ -80,7 +220,6 @@ export function NewProjectModal({ onConfirm, onCancel }) {
         </div>
     );
 }
-
 
 
 export function ExportTexModal({ texContent, onClose }) {

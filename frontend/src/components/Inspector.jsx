@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES, DOCUMENT_THEMES } from '../lib/blockTypes.js';
+import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_FONTS, LATEX_ENGINES, DOCUMENT_THEMES, getFontCssFamily } from '../lib/blockTypes.js';
 
 // ─── Toggle ──────────────────────────────────────────────────
 function Toggle({ value, onChange }) {
@@ -269,6 +269,23 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         ))}
                     </select>
                 </div>
+
+                <div style={{
+                    marginTop: '12px',
+                    padding: '12px',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--bg-elevated)',
+                    fontFamily: getFontCssFamily(global_setup.font || 'default', global_setup.theme || 'default'),
+                    transition: 'font-family 0.3s ease',
+                }}>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '6px' }}>
+                        A tipografia é a voz do seu texto.
+                    </div>
+                    <div style={{ fontSize: '12px', opacity: 0.8, lineHeight: 1.5 }}>
+                        Esta é uma pré-visualização web da fonte. A renderização final no PDF terá ajustes precisos.
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -335,6 +352,54 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
             <div className="divider" />
 
             {/* Type-specific options */}
+
+            {block.type === BLOCK_TYPES.TOC && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Configurações do Índice</div>
+
+                    <div className="toggle-group">
+                        <span className="toggle-label">🔗 Itens com link (clicáveis)</span>
+                        <Toggle
+                            value={!!style_variables.tocLinks}
+                            onChange={v => onUpdateStyleVars({ tocLinks: v })}
+                        />
+                    </div>
+                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '-4px 0 12px', lineHeight: 1.5 }}>
+                        {style_variables.tocLinks
+                            ? 'Os itens do índice serão links para a seção correspondente.'
+                            : 'Itens do índice sem link (padrão).'}
+                    </p>
+
+                    <div className="form-group">
+                        <label className="form-label">Preenchimento entre texto e número</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
+                            {[
+                                { value: 'empty', label: 'Vazio', preview: '——' },
+                                { value: 'dots',  label: 'Pontos', preview: '......' },
+                                { value: 'line',  label: 'Linha', preview: '______' },
+                            ].map(opt => {
+                                const isActive = (style_variables.tocFill || 'empty') === opt.value;
+                                return (
+                                    <button key={opt.value}
+                                        onClick={() => onUpdateStyleVars({ tocFill: opt.value })}
+                                        style={{
+                                            padding: '7px 4px', fontSize: '10px', textAlign: 'center',
+                                            border: '1px solid', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                            background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                            borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                            color: isActive ? 'white' : 'var(--text-secondary)',
+                                            transition: 'all 0.15s',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                                        }}>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', opacity: 0.7 }}>{opt.preview}</span>
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {block.type === BLOCK_TYPES.SEPARATOR && (
                 <div className="inspector-section">
@@ -1388,7 +1453,6 @@ function LatexTab({ getTexContent }) {
     );
 }
 
-// ─── Main Inspector ──────────────────────────────────────────
 export function Inspector({
     project,
     selectedBlock,
@@ -1397,22 +1461,37 @@ export function Inspector({
     onUpdateSetup,
     onUpdateConfig,
     onUpdateStyleVars,
+    tab = 'block',
+    onTabChange,
+    collapsed,
+    onCollapse
 }) {
-    const [tab, setTab] = useState('block');
-
     const tabs = [
         { id: 'block',  label: 'Bloco' },
         { id: 'global', label: 'Documento' },
     ];
 
+    const currentTab = onTabChange ? tab : 'block';
+    const setCurrentTab = onTabChange || (() => {});
+
     return (
         <aside className="inspector">
             <div className="inspector-tabs">
+                {onCollapse && (
+                    <button
+                        className="btn btn-ghost btn-icon"
+                        onClick={onCollapse}
+                        title={collapsed ? 'Expandir propriedades' : 'Recolher propriedades'}
+                        style={{ fontSize: '11px', flexShrink: 0, padding: '0 8px' }}
+                    >
+                        {collapsed ? '◀' : '▶'}
+                    </button>
+                )}
                 {tabs.map(t => (
                     <div
                         key={t.id}
-                        className={`inspector-tab ${tab === t.id ? 'active' : ''}`}
-                        onClick={() => setTab(t.id)}
+                        className={`inspector-tab ${currentTab === t.id ? 'active' : ''}`}
+                        onClick={() => setCurrentTab(t.id)}
                     >
                         {t.label}
                     </div>
@@ -1420,14 +1499,14 @@ export function Inspector({
             </div>
 
             <div className="inspector-content">
-                {tab === 'block' && (
+                {currentTab === 'block' && (
                     <BlockTab
                         block={selectedBlock}
                         onUpdateConfig={onUpdateConfig}
                         onUpdateStyleVars={onUpdateStyleVars}
                     />
                 )}
-                {tab === 'global' && (
+                {currentTab === 'global' && (
                     <GlobalTab
                         project={project}
                         onUpdateMetadata={onUpdateMetadata}

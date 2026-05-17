@@ -171,3 +171,32 @@ export const DOCUMENT_THEMES = [
         description: 'Helvetica sans-serif, compacto e direto. Ideal para relatórios.',
     },
 ];
+
+export function getFontCssFamily(fontValue, themeValue) {
+    let base = fontValue;
+    if (fontValue === 'default' && themeValue) {
+        const theme = DOCUMENT_THEMES.find(t => t.value === themeValue);
+        if (theme) {
+            const f = theme.font.toLowerCase();
+            if (f.includes('palatino')) base = 'palatino';
+            else if (f.includes('bookman')) base = 'bookman';
+            else if (f.includes('charter')) base = 'charter';
+            else if (f.includes('helvetica')) base = 'helvet';
+        }
+    }
+
+    switch (base) {
+        case 'palatino': return "'Palatino Linotype', 'Book Antiqua', Palatino, serif";
+        case 'helvet': return "'Helvetica Neue', Helvetica, Arial, sans-serif";
+        case 'garamond': return "'EB Garamond', Garamond, serif";
+        case 'libertine': return "'Linux Libertine', 'Times New Roman', serif";
+        case 'sourceserifpro': return "'Source Serif Pro', 'Times New Roman', serif";
+        case 'crimson': return "'Crimson Text', 'Times New Roman', serif";
+        case 'bookman': return "'Bookman Old Style', serif";
+        case 'charter': return "'Bitstream Charter', 'Times New Roman', serif";
+        case 'default':
+        default:
+            return "'Computer Modern Serif', 'Times New Roman', serif";
+    }
+}
+

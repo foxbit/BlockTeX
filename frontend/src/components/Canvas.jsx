@@ -27,6 +27,7 @@ export function BlockCard({
     onDragStart,
     onDrop,
     onAddAfter,
+    onEditBlockProperties,
     isFirst,
     isLast,
 }) {
@@ -126,6 +127,19 @@ export function BlockCard({
 
                     {/* Block id */}
                     <span className="block-id-label">#{index + 1}</span>
+
+                    <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '10px', padding: '2px 8px', height: 'auto', minHeight: '0', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={e => { e.stopPropagation(); onSelect(block.id); onEditBlockProperties && onEditBlockProperties(block.id); }}
+                        title="Editar propriedades do bloco"
+                    >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        Editar Bloco
+                    </button>
 
                     {/* Actions */}
                     <div className="block-actions">
@@ -280,9 +294,6 @@ export function BlockCard({
                                         📝 {getWordCount(block.content || '')} palavras
                                     </span>
                                 </div>
-                                <button className="btn btn-secondary btn-edit-overlay">
-                                    ✍️ Editar Texto
-                                </button>
                             </div>
                         ) : (
                             <div className="block-content-summary" onClick={() => onEditContent(block.id)}>
@@ -302,9 +313,6 @@ export function BlockCard({
                                         </span>
                                     )}
                                 </div>
-                                <button className="btn btn-secondary btn-edit-overlay">
-                                    ✍️ Editar Conteúdo
-                                </button>
                             </div>
                         )}
                     </div>
@@ -325,6 +333,7 @@ export function Canvas({
     onMove,
     onAddBlock,
     onDropBlock,
+    onEditBlockProperties,
 }) {
     const [canvasDragging, setCanvasDragging] = useState(false);
 
@@ -417,6 +426,7 @@ export function Canvas({
                         onDragStart={() => { }}
                         onDrop={handleBlockDrop}
                         onAddAfter={onAddBlock}
+                        onEditBlockProperties={onEditBlockProperties}
                         isFirst={index === 0}
                         isLast={index === blocks.length - 1}
                     />

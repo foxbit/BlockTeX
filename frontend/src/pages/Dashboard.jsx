@@ -40,11 +40,20 @@ export function Dashboard() {
         setShowNewModal(true);
     };
 
-    const handleConfirmNewProject = async ({ title, author, paper, mirror }) => {
+    const handleConfirmNewProject = async ({
+        title, author, date, paper, baseSize, mirror, bleed,
+        innerMargin, outerMargin, topMargin, bottomMargin,
+        theme, font, engine,
+    }) => {
         const newProj = {
             ...DEFAULT_PROJECT,
-            metadata: { ...DEFAULT_PROJECT.metadata, title, author },
-            global_setup: { ...DEFAULT_PROJECT.global_setup, paper, mirror },
+            metadata: { ...DEFAULT_PROJECT.metadata, title, author, date },
+            global_setup: {
+                ...DEFAULT_PROJECT.global_setup,
+                paper, baseSize, mirror, bleed,
+                innerMargin, outerMargin, topMargin, bottomMargin,
+                theme, font, engine,
+            },
             blocks: []
         };
         const res = await saveProject(newProj);

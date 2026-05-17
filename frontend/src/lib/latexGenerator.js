@@ -671,9 +671,44 @@ function blockToLatex(block, mirror = false) {
             tex += mdToLatex(content, config) + '\n';
             break;
 
-        case BLOCK_TYPES.TOC:
-            tex += `\\tableofcontents\n${breakCmd}\n`;
+        case BLOCK_TYPES.TOC: {
+            const tocLinks = style_variables.tocLinks === true;
+            const tocFill  = style_variables.tocFill || 'empty'; // 'empty' | 'dots' | 'line'
+
+            // Fill character between entry text and page number
+            let fillCmd = '';
+            if (tocFill === 'dots') {
+                // Closely-spaced dots: sep=1 gives tight dots (default \cftdotsep≈4.5 is too sparse)
+                fillCmd = [
+                    '\\renewcommand{\\cftchapleader}{\\cftdotfill{1}}',
+                    '\\renewcommand{\\cftsecleader}{\\cftdotfill{1}}',
+                    '\\renewcommand{\\cftsubsecleader}{\\cftdotfill{1}}',
+                ].join('\n');
+            } else if (tocFill === 'line') {
+                // True continuous underline using \leaders\hrule (not dots)
+                fillCmd = [
+                    '\\renewcommand{\\cftchapleader}{\\enspace\\leaders\\hbox{\\rule[0.4ex]{1pt}{0.4pt}}\\hfill\\enspace}',
+                    '\\renewcommand{\\cftsecleader}{\\enspace\\leaders\\hbox{\\rule[0.4ex]{1pt}{0.4pt}}\\hfill\\enspace}',
+                    '\\renewcommand{\\cftsubsecleader}{\\enspace\\leaders\\hbox{\\rule[0.4ex]{1pt}{0.4pt}}\\hfill\\enspace}',
+                ].join('\n');
+            } else {
+                // Empty — no fill between text and page number
+                fillCmd = [
+                    '\\renewcommand{\\cftchapleader}{}',
+                    '\\renewcommand{\\cftsecleader}{}',
+                    '\\renewcommand{\\cftsubsecleader}{}',
+                ].join('\n');
+            }
+
+            // Links control
+            const linksCmd = tocLinks
+                ? '' // hyperref already enables links by default
+                : '{\\hypersetup{hidelinks}\n'; // suppress link colours inside TOC
+            const linksEnd = tocLinks ? '' : '}';
+
+            tex += `${linksCmd}${fillCmd}\n\\tableofcontents\n${linksEnd}${breakCmd}\n`;
             break;
+        }
 
         case BLOCK_TYPES.SEPARATOR:
             if (style_variables.pageBreak) {

@@ -12,6 +12,13 @@ import { useBackend } from '../hooks/useBackend.js';
 import { TipTapDrawer } from '../components/TipTapDrawer.jsx';
 import { BLOCK_TYPES } from '../lib/blockTypes.js';
 
+// ── Gear icon SVG ──────────────────────────────────────────────
+const ChevronDown = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+
 export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -42,6 +49,9 @@ export default function Editor() {
   const [notification, setNotification] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState('block');
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsRef = useRef(null);
 
   const { status, logs, compile, saveProject, loadProject, clearLogs } = useBackend();
   const [loading, setLoading] = useState(true);
@@ -218,6 +228,33 @@ export default function Editor() {
     e.target.value = '';
   }, [showNotification]);
 
+  const handleExportJson = useCallback(() => {
+    const data = store.get();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const title = (data.metadata?.title || 'projeto').replace(/[^a-z0-9]/gi, '_');
+    a.download = `${title}.btx.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setActionsOpen(false);
+    showNotification('JSON exportado!');
+  }, [store, showNotification]);
+
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const handler = (e) => {
+      if (actionsRef.current && !actionsRef.current.contains(e.target)) {
+        setActionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [actionsOpen]);
+
   return (
     <div className="app-layout">
       {/* Notification toast */}
@@ -258,6 +295,11 @@ export default function Editor() {
           <span>BlockTeX</span>
         </div>
 
+        {/* Back to Dashboard - antes do título */}
+        <button className="btn btn-ghost" onClick={() => navigate('/')} style={{ flexShrink: 0 }}>
+          ← Voltar
+        </button>
+
         <div className="topbar-sep" />
 
         {/* Project title */}
@@ -268,97 +310,55 @@ export default function Editor() {
           </div>
         </div>
 
-        {/* Backend status */}
-        <div
-          className={`status-chip ${status.connected ? 'online' : 'offline'}`}
-          title={status.connected
-            ? `Backend online • pdflatex: ${status.engines?.pdflatex ? '✓' : '✗'} • lualatex: ${status.engines?.lualatex ? '✓' : '✗'}`
-            : 'Backend offline — inicie o servidor Node.js'}
-        >
-          <div className="dot" />
-          {status.connected ? 'Backend' : 'Offline'}
-        </div>
+
 
         <div className="topbar-actions">
-          {/* Sidebar toggle */}
-          <button
-            className="btn btn-ghost btn-icon"
-            onClick={() => setSidebarCollapsed(c => !c)}
-            title="Toggle sidebar"
-            data-tooltip="Sidebar"
-          >
-            ☰
-          </button>
-
-          {/* Back to Dashboard */}
-          <button className="btn btn-ghost" onClick={() => navigate('/')}>
-            ← Voltar
-          </button>
-
-          {/* Import */}
-          <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-            📂 Abrir JSON
-            <input type="file" accept=".btx,.json" style={{ display: 'none' }} onChange={handleImportBtx} />
-          </label>
-
-          {/* Save */}
-          <button className="btn btn-secondary" onClick={handleSave}>
-            💾 Salvar
-          </button>
-
-          {/* Export .tex */}
-          <button className="btn btn-secondary" onClick={() => setModal('tex')} title="Ctrl+E">
-            📄 .tex
-          </button>
-
-          {/* Preview */}
-          <button
-            className="btn btn-secondary"
-            onClick={() => setShowPreview(p => !p)}
-            title="Ctrl+P"
-          >
-            {showPreview ? '✕ Preview' : '👁 Preview'}
-          </button>
-
           {/* Undo/Redo */}
-          <button
-            className="btn btn-ghost btn-icon"
-            onClick={() => store.undo()}
-            title="Ctrl+Z"
-            disabled={!store.canUndo()}
-          >
-            ↩
-          </button>
-          <button
-            className="btn btn-ghost btn-icon"
-            onClick={() => store.redo()}
-            title="Ctrl+Y"
-            disabled={!store.canRedo()}
-          >
-            ↪
-          </button>
+          <button className="btn btn-ghost btn-icon" onClick={() => store.undo()} title="Ctrl+Z" disabled={!store.canUndo()}>↩</button>
+          <button className="btn btn-ghost btn-icon" onClick={() => store.redo()} title="Ctrl+Y" disabled={!store.canRedo()}>↪</button>
 
-          {/* Inspector toggle */}
-          <button
-            className="btn btn-ghost btn-icon"
-            onClick={() => setInspectorCollapsed(c => !c)}
-            title="Toggle inspector"
-          >
-            ⊞
-          </button>
+          {/* Save - standalone */}
+          <button className="btn btn-secondary" onClick={handleSave}>💾 Salvar</button>
 
-          {/* Compile */}
+          {/* Actions dropdown */}
+          <div style={{ position: 'relative' }} ref={actionsRef}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setActionsOpen(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              Ações <ChevronDown />
+            </button>
+            {actionsOpen && (
+              <div className="actions-dropdown">
+                <label className="dropdown-item" style={{ cursor: 'pointer' }}>
+                  📂 Importar JSON
+                  <input type="file" accept=".btx,.json" style={{ display: 'none' }}
+                    onChange={(e) => { handleImportBtx(e); setActionsOpen(false); }} />
+                </label>
+                <button className="dropdown-item" onClick={handleExportJson}>
+                  📤 Exportar JSON
+                </button>
+                <div className="dropdown-divider" />
+                <button className="dropdown-item" onClick={() => { setModal('tex'); setActionsOpen(false); }}>
+                  📄 Exportar .tex
+                </button>
+                <div className="dropdown-divider" />
+                <button className="dropdown-item" onClick={() => { setShowPreview(p => !p); setActionsOpen(false); }}>
+                  👁 {showPreview ? 'Fechar Preview' : 'Abrir Preview'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Compile - standalone */}
           <button
             className="btn btn-compile"
             onClick={handleCompile}
             disabled={compiling || project.blocks.length === 0}
-            title="Ctrl+Enter"
+            title="Compilar PDF"
           >
-            {compiling ? (
-              <><div className="spinner" /> Compilando…</>
-            ) : (
-              <>⚡ Compilar PDF</>
-            )}
+            {compiling ? <><div className="spinner" /> Compilando…</> : <>⚡ Compilar PDF</>}
           </button>
         </div>
       </header>
@@ -369,6 +369,8 @@ export default function Editor() {
         <div className={`block-library-wrapper ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <BlockLibrary
             onAddBlock={handleAddBlock}
+            collapsed={sidebarCollapsed}
+            onCollapse={() => setSidebarCollapsed(c => !c)}
           />
         </div>
 
@@ -410,6 +412,11 @@ export default function Editor() {
             onMove={(fromId, toId, pos) => store.moveBlock(fromId, toId, pos)}
             onAddBlock={handleAddBlock}
             onDropBlock={handleDropBlock}
+            onEditBlockProperties={(id) => {
+              setSelectedBlockId(id);
+              setInspectorTab('block');
+              setInspectorCollapsed(false);
+            }}
           />
         </div>
 
@@ -423,6 +430,10 @@ export default function Editor() {
             onUpdateSetup={(s) => store.updateGlobalSetup(s)}
             onUpdateConfig={(c) => selectedBlockId && store.updateBlockConfig(selectedBlockId, c)}
             onUpdateStyleVars={(v) => selectedBlockId && store.updateBlockStyleVars(selectedBlockId, v)}
+            tab={inspectorTab}
+            onTabChange={setInspectorTab}
+            collapsed={inspectorCollapsed}
+            onCollapse={() => setInspectorCollapsed(c => !c)}
           />
         </div>
       </div>
