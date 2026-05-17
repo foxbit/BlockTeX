@@ -135,8 +135,21 @@ export default function Editor() {
 
     const compileAssets = {};
     project.blocks.forEach(block => {
-      if (block.type === BLOCK_TYPES.TESTIMONIAL && block.style_variables?.imageBase64) {
-        compileAssets[`depo_img_${block.id}.jpg`] = block.style_variables.imageBase64;
+      const sv = block.style_variables || {};
+      if (block.type === BLOCK_TYPES.TESTIMONIAL && sv.imageBase64) {
+        compileAssets[`depo_img_${block.id}.jpg`] = sv.imageBase64;
+      }
+      if (block.type === BLOCK_TYPES.IMAGE && sv.imageBase64) {
+        const fn = (sv.filename || `img_${block.id}.jpg`).replace(/[^a-zA-Z0-9._-]/g, '_');
+        compileAssets[fn] = sv.imageBase64;
+      }
+      if (block.type === BLOCK_TYPES.IMAGE_GRID) {
+        [1, 2, 3, 4].forEach(i => {
+          if (sv[`image${i}Base64`]) {
+            const fn = (sv[`filename${i}`] || `img_grid_${i}_${block.id}.jpg`).replace(/[^a-zA-Z0-9._-]/g, '_');
+            compileAssets[fn] = sv[`image${i}Base64`];
+          }
+        });
       }
     });
 

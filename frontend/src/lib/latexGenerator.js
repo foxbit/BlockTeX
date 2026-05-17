@@ -529,8 +529,22 @@ function generatePreamble(globalSetup, metadata) {
         '',
         '% ─── Graphics & Tables ──────────────────────────────',
         '\\usepackage{graphicx}',
+        '\\usepackage{wrapfig}',
         '\\usepackage{float}',
+        '\\usepackage{tikz}',
         '\\graphicspath{{./assets/}}',
+        '',
+        '% Cover-image macro (like CSS object-fit: cover)',
+        '\\newsavebox{\\btxcoverbox}',
+        '\\newcommand{\\btxcoverimg}[3]{% #1=path, #2=target width, #3=target height',
+        '  \\sbox{\\btxcoverbox}{\\includegraphics[width=#2]{#1}}%',
+        '  \\ifdim\\ht\\btxcoverbox<#3\\relax',
+        '    \\includegraphics[height=#3]{#1}%',
+        '  \\else',
+        '    \\includegraphics[width=#2]{#1}%',
+        '  \\fi',
+        '}',
+        '',
         '\\usepackage{booktabs}',
         '\\usepackage{array}',
         '\\usepackage{longtable}',
@@ -538,6 +552,7 @@ function generatePreamble(globalSetup, metadata) {
         '% ─── Colors ─────────────────────────────────────────',
         '\\usepackage{xcolor}',
         '\\definecolor{accent}{HTML}{6366F1}',
+        '\\usepackage{eso-pic} % Full-bleed background images',
         '',
         '% ─── Code Listings ──────────────────────────────────',
         '\\usepackage{listings}',
@@ -665,21 +680,214 @@ function blockToLatex(block, mirror = false) {
             break;
 
         case BLOCK_TYPES.IMAGE: {
-            const caption = style_variables.caption || '';
-            const width = style_variables.width || '0.8';
-            const imgMatch = content.match(/<!--\s*image:\s*(.+?)\s*-->/);
-            if (imgMatch) {
-                const imgPath = imgMatch[1].replace(/[^a-zA-Z0-9/_.-]/g, '_');
-                tex += `\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=${width}\\textwidth]{assets/${imgPath}}\n`;
-                if (caption) tex += `  \\caption{${escapeLatex(caption)}}\n`;
-                tex += `\\end{figure}\n`;
+            // ── Single image: inline in text, OR exclusive page ──────────────
+            const caption    = style_variables.caption    || '';
+            const title      = style_variables.title      || '';
+            const widthFrac  = parseFloat(style_variables.width) || 0.8;
+            const layout     = style_variables.layout     || 'center'; // center | full | left | right
+            const floatPos   = style_variables.floatPos   || 'h';
+            const fillMode   = style_variables.fillMode   || 'fit';    // fit | stretch | bleed
+            const keepRatio  = style_variables.keepRatio  !== false;
+            const cropAnchor = style_variables.cropAnchor || 'center'; // top | center | bottom
+            const pageStyle  = style_variables.pageStyle  || 'empty';
+            const exclusive  = style_variables.exclusivePage === true;
+
+            // Resolve image source
+            let imgRef = null;
+            if (style_variables.imageBase64) {
+                const fn = (style_variables.filename || `img_${block.id}.jpg`).replace(/[^a-zA-Z0-9._-]/g, '_');
+                imgRef = `assets/${fn}`;
             } else {
+                const imgMatch = content.match(/<!--\s*image:\s*(.+?)\s*-->/);
+                if (imgMatch) imgRef = `assets/${imgMatch[1].replace(/[^a-zA-Z0-9/_.-]/g, '_')}`;
+            }
+
+            if (!imgRef && !exclusive) {
                 tex += mdToLatex(content, config) + '\n';
+                break;
+            }
+
+            const breakCmd  = mirror ? '\\cleardoublepage' : '\\clearpage';
+            const anchorMap = { top: 'north', center: 'center', bottom: 'south' };
+            const tikzAnc   = anchorMap[cropAnchor] || 'center';
+            const yPosBleed = cropAnchor === 'top'    ? '0.5\\paperwidth,\\paperheight'
+                            : cropAnchor === 'bottom' ? '0.5\\paperwidth,0'
+                            : '0.5\\paperwidth,0.5\\paperheight';
+
+            if (exclusive) {
+                // ── Exclusive page mode ──────────────────────────────────────
+                tex += `${breakCmd}\n`;
+                tex += `\\thispagestyle{${pageStyle}}\n`;
+
+                if (fillMode === 'bleed' && imgRef) {
+                    if (keepRatio) {
+                        tex += `\\AddToShipoutPictureBG*{%\n`;
+                        tex += `  \\AtPageLowerLeft{%\n`;
+                        tex += `    \\begin{tikzpicture}\n`;
+                        tex += `      \\useasboundingbox (0,0) rectangle (\\paperwidth,\\paperheight);\n`;
+                        tex += `      \\clip (0,0) rectangle (\\paperwidth,\\paperheight);\n`;
+                        tex += `      \\node[inner sep=0pt, anchor=${tikzAnc}] at (${yPosBleed}) {%\n`;
+                        tex += `        \\btxcoverimg{${imgRef}}{\\paperwidth}{\\paperheight}%\n`;
+                        tex += `      };\n`;
+                        tex += `    \\end{tikzpicture}%\n`;
+                        tex += `  }%\n`;
+                        tex += `}\n`;
+                    } else {
+                        tex += `\\AddToShipoutPictureBG*{%\n`;
+                        tex += `  \\AtPageLowerLeft{\\includegraphics[width=\\paperwidth,height=\\paperheight]{${imgRef}}}%\n`;
+                        tex += `}\n`;
+                    }
+                    if (title || caption) {
+                        tex += `\\vspace*{\\fill}\n`;
+                        if (title)   tex += `{\\centering\\color{white}\\large\\bfseries ${escapeLatex(title)}\\par\\vspace{0.5em}}\n`;
+                        if (caption) tex += `{\\centering\\color{white}\\small ${escapeLatex(caption)}\\par}\n`;
+                        tex += `\\vspace*{\\fill}\n`;
+                    } else {
+                        tex += `\\null\n`;
+                    }
+                    tex += `\\newpage\n`;
+
+                } else if (imgRef) {
+                    tex += `\\vspace*{\\fill}\n`;
+                    if (title) tex += `{\\centering\\large\\bfseries ${escapeLatex(title)}\\par\\vspace{1em}}\n`;
+                    if (fillMode === 'stretch' && keepRatio) {
+                        const yPosTxt = cropAnchor === 'top' ? '0.85\\textheight' : cropAnchor === 'bottom' ? '0' : '0.425\\textheight';
+                        tex += `\\noindent\\begin{tikzpicture}\n`;
+                        tex += `  \\useasboundingbox (0,0) rectangle (\\textwidth,0.85\\textheight);\n`;
+                        tex += `  \\clip (0,0) rectangle (\\textwidth,0.85\\textheight);\n`;
+                        tex += `  \\node[inner sep=0pt, anchor=${tikzAnc}] at (0.5\\textwidth,${yPosTxt}) {%\n`;
+                        tex += `    \\btxcoverimg{${imgRef}}{\\textwidth}{0.85\\textheight}%\n`;
+                        tex += `  };\n`;
+                        tex += `\\end{tikzpicture}\n`;
+                    } else if (fillMode === 'stretch') {
+                        tex += `\\begin{figure}[H]\n  \\centering\n`;
+                        tex += `  \\includegraphics[width=\\textwidth,height=0.85\\textheight]{${imgRef}}\n`;
+                        if (caption) tex += `  \\caption*{${escapeLatex(caption)}}\n`;
+                        tex += `\\end{figure}\n`;
+                    } else {
+                        tex += `\\begin{figure}[H]\n  \\centering\n`;
+                        tex += `  \\includegraphics[width=\\textwidth,height=0.85\\textheight,keepaspectratio]{${imgRef}}\n`;
+                        if (caption) tex += `  \\caption*{${escapeLatex(caption)}}\n`;
+                        tex += `\\end{figure}\n`;
+                    }
+                    tex += `\\vspace*{\\fill}\n`;
+                } else {
+                    tex += `% [Bloco Imagem sem imagem configurada]\n`;
+                }
+
+            } else {
+                // ── Inline mode (flows with text) ────────────────────────────
+                const captionTex = caption ? `  \\caption{${escapeLatex(caption)}}\n` : '';
+                if (layout === 'full') {
+                    tex += `\\begin{figure}[${floatPos}]\n  \\centering\n  \\includegraphics[width=\\textwidth]{${imgRef}}\n${captionTex}\\end{figure}\n`;
+                } else if (layout === 'left' || layout === 'right') {
+                    const wrapSide  = layout === 'left' ? 'l' : 'r';
+                    const wrapWidth = `${widthFrac}\\textwidth`;
+                    tex += `\\begin{wrapfigure}{${wrapSide}}{${wrapWidth}}\n`;
+                    tex += `  \\centering\n`;
+                    tex += `  \\includegraphics[width=\\linewidth]{${imgRef}}\n`;
+                    if (caption) tex += `  \\caption{${escapeLatex(caption)}}\n`;
+                    tex += `\\end{wrapfigure}\n`;
+                    if (content && !content.match(/^<!--/)) tex += mdToLatex(content, config) + '\n';
+                } else {
+                    tex += `\\begin{figure}[${floatPos}]\n  \\centering\n  \\includegraphics[width=${widthFrac}\\textwidth]{${imgRef}}\n${captionTex}\\end{figure}\n`;
+                }
             }
             break;
         }
 
-        case BLOCK_TYPES.TESTIMONIAL: {
+        case BLOCK_TYPES.IMAGE_GRID: {
+            // ── Multiple images: stacked | side-by-side | grid-4 ────────────
+            const gridLayout   = style_variables.gridLayout  || 'side-by-side'; // stacked | side-by-side | grid-4
+            const exclusive_g  = style_variables.exclusivePage === true;
+            const captionG     = style_variables.caption     || '';
+            const spacingG     = style_variables.spacing      || '1em';
+            const floatPosG    = exclusive_g ? 'H' : (style_variables.floatPos || 'h');
+
+            // Build asset refs for up to 4 images
+            const gRefs = [1, 2, 3, 4].map(i => {
+                const b64  = style_variables[`image${i}Base64`];
+                const fn   = style_variables[`filename${i}`];
+                if (!b64) return null;
+                return `assets/${(fn || `img_grid_${i}_${block.id}.jpg`).replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            });
+            const gCaps = [1, 2, 3, 4].map(i => style_variables[`caption${i}`] || '');
+            const wSlider = parseFloat(style_variables.imageWidth) || (gridLayout === 'grid-4' ? 0.47 : 0.48);
+
+            const hasAny = gRefs.some(r => r !== null);
+            if (!hasAny) { tex += `% [Bloco Grade de Imagens sem imagens configuradas]\n`; break; }
+
+            if (exclusive_g) tex += `\\clearpage\n`;
+
+            if (gridLayout === 'stacked') {
+                // 2 images vertically stacked
+                const fullWidth = parseFloat(style_variables.imageWidth) || 0.85;
+                tex += `\\begin{figure}[${floatPosG}]\n  \\centering\n`;
+                if (gRefs[0]) {
+                    tex += `  \\includegraphics[width=${fullWidth}\\textwidth]{${gRefs[0]}}\n`;
+                    if (gCaps[0]) tex += `  \\caption*{${escapeLatex(gCaps[0])}}\n`;
+                }
+                if (gRefs[0] && gRefs[1]) tex += `  \\vspace{${spacingG}}\\\\\n`;
+                if (gRefs[1]) {
+                    tex += `  \\includegraphics[width=${fullWidth}\\textwidth]{${gRefs[1]}}\n`;
+                    if (gCaps[1]) tex += `  \\caption*{${escapeLatex(gCaps[1])}}\n`;
+                }
+                if (captionG) tex += `  \\caption*{${escapeLatex(captionG)}}\n`;
+                tex += `\\end{figure}\n`;
+
+            } else if (gridLayout === 'side-by-side') {
+                // 2 images side-by-side via minipage
+                tex += `\\begin{figure}[${floatPosG}]\n  \\centering\n`;
+                if (gRefs[0]) {
+                    tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
+                    tex += `    \\centering\n`;
+                    tex += `    \\includegraphics[width=\\linewidth]{${gRefs[0]}}\n`;
+                    if (gCaps[0]) tex += `    \\caption*{${escapeLatex(gCaps[0])}}\n`;
+                    tex += `  \\end{minipage}`;
+                }
+                if (gRefs[0] && gRefs[1]) tex += `\n  \\hfill\n`;
+                if (gRefs[1]) {
+                    tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
+                    tex += `    \\centering\n`;
+                    tex += `    \\includegraphics[width=\\linewidth]{${gRefs[1]}}\n`;
+                    if (gCaps[1]) tex += `    \\caption*{${escapeLatex(gCaps[1])}}\n`;
+                    tex += `  \\end{minipage}\n`;
+                }
+                if (captionG) tex += `  \\caption*{${escapeLatex(captionG)}}\n`;
+                tex += `\\end{figure}\n`;
+
+            } else if (gridLayout === 'grid-4') {
+                // 2×2 grid using 4 minipages
+                tex += `\\begin{figure}[${floatPosG}]\n  \\centering\n`;
+                const pairs = [[0,1],[2,3]];
+                for (const [a, b] of pairs) {
+                    if (!gRefs[a] && !gRefs[b]) continue;
+                    if (gRefs[a]) {
+                        tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
+                        tex += `    \\centering\n`;
+                        tex += `    \\includegraphics[width=\\linewidth]{${gRefs[a]}}\n`;
+                        if (gCaps[a]) tex += `    \\caption*{${escapeLatex(gCaps[a])}}\n`;
+                        tex += `  \\end{minipage}`;
+                    }
+                    if (gRefs[a] && gRefs[b]) tex += `\n  \\hfill\n`;
+                    if (gRefs[b]) {
+                        tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
+                        tex += `    \\centering\n`;
+                        tex += `    \\includegraphics[width=\\linewidth]{${gRefs[b]}}\n`;
+                        if (gCaps[b]) tex += `    \\caption*{${escapeLatex(gCaps[b])}}\n`;
+                        tex += `  \\end{minipage}\n`;
+                    }
+                    tex += `  \\vspace{${spacingG}}\\\\\n`;
+                }
+                if (captionG) tex += `  \\caption*{${escapeLatex(captionG)}}\n`;
+                tex += `\\end{figure}\n`;
+            }
+
+            if (exclusive_g) tex += `\\newpage\n`;
+            break;
+        }
+
+                case BLOCK_TYPES.TESTIMONIAL: {
             const {
                 personName = '',
                 quote = '',

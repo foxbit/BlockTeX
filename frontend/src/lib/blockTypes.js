@@ -2,15 +2,16 @@
 // Block type definitions
 // ============================================================
 export const BLOCK_TYPES = {
-    CONTENT: 'content',
-    CHAPTER: 'chapter',
-    IMAGE: 'image',
-    QUOTE: 'quote',
-    CODE: 'code',
-    TOC: 'toc',
-    SEPARATOR: 'separator',
-    COVER: 'cover',
-    TESTIMONIAL: 'testimonial',
+    CONTENT:    'content',
+    CHAPTER:    'chapter',
+    IMAGE:      'image',       // Single image — inline or full page
+    IMAGE_GRID: 'image_grid',  // Multi-image grid (2 stacked, 2 side-by-side, 4-grid)
+    QUOTE:      'quote',
+    CODE:       'code',
+    TOC:        'toc',
+    SEPARATOR:  'separator',
+    COVER:      'cover',
+    TESTIMONIAL:'testimonial',
 };
 
 export const BLOCK_TYPE_META = {
@@ -36,7 +37,15 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-image',
         tagClass: 'tag-teal',
         color: '#14b8a6',
-        default_content: '<!-- image: caminho/para/imagem.png -->\n_Legenda da imagem_',
+        default_content: '',
+    },
+    [BLOCK_TYPES.IMAGE_GRID]: {
+        label: 'Grade de Imagens',
+        icon: '📸',
+        iconClass: 'icon-image-grid',
+        tagClass: 'tag-teal',
+        color: '#0891b2',
+        default_content: '',
     },
     [BLOCK_TYPES.QUOTE]: {
         label: 'Citação',
@@ -95,7 +104,11 @@ export const BLOCK_CATEGORIES = [
     },
     {
         label: 'Conteúdo',
-        types: [BLOCK_TYPES.CONTENT, BLOCK_TYPES.QUOTE, BLOCK_TYPES.IMAGE, BLOCK_TYPES.CODE, BLOCK_TYPES.TESTIMONIAL],
+        types: [BLOCK_TYPES.CONTENT, BLOCK_TYPES.QUOTE, BLOCK_TYPES.CODE, BLOCK_TYPES.TESTIMONIAL],
+    },
+    {
+        label: 'Imagens',
+        types: [BLOCK_TYPES.IMAGE, BLOCK_TYPES.IMAGE_GRID],
     },
 ];
 

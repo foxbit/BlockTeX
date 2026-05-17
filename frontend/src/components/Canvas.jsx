@@ -199,6 +199,50 @@ export function BlockCard({
                             <div style={{ padding: '8px 0' }}>
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-default)' }} />
                             </div>
+                        ) : block.type === BLOCK_TYPES.IMAGE ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px' }}>
+                                {block.style_variables?.imageBase64 ? (
+                                    <img src={block.style_variables.imageBase64} style={{ width: '72px', height: '54px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', flexShrink: 0 }} />
+                                ) : (
+                                    <div style={{ width: '72px', height: '54px', background: 'var(--bg-secondary)', border: '2px dashed var(--border-subtle)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>🖼️</div>
+                                )}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                        {block.style_variables?.exclusivePage
+                                            ? <span className="stat-pill" style={{ color: 'var(--accent-indigo)' }}>📄 Página própria</span>
+                                            : <span className="stat-pill">{{center:'Centro', full:'Largura total', left:'Flutua esq.', right:'Flutua dir.'}[block.style_variables?.layout || 'center']}</span>
+                                        }
+                                        {block.style_variables?.exclusivePage && block.style_variables?.fillMode && (
+                                            <span className="stat-pill">{{fit:'Fit',stretch:'Stretch',bleed:'Sangria'}[block.style_variables.fillMode]}</span>
+                                        )}
+                                    </div>
+                                    {block.style_variables?.caption && <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{block.style_variables.caption}</div>}
+                                </div>
+                            </div>
+                        ) : block.type === BLOCK_TYPES.IMAGE_GRID ? (
+                            <div style={{ padding: '8px' }}>
+                                {(() => {
+                                    const layout = block.style_variables?.gridLayout || 'side-by-side';
+                                    const slots  = layout === 'grid-4' ? [1,2,3,4] : [1,2];
+                                    const imgs   = slots.map(i => block.style_variables?.[`image${i}Base64`]);
+                                    const hasAny = imgs.some(Boolean);
+                                    return (
+                                        <>
+                                            <div style={{ display: layout === 'stacked' ? 'flex' : 'grid', flexDirection: layout === 'stacked' ? 'column' : undefined, gridTemplateColumns: layout === 'grid-4' ? '1fr 1fr' : '1fr 1fr', gap: '4px', marginBottom: '6px' }}>
+                                                {slots.map(i => (
+                                                    block.style_variables?.[`image${i}Base64`]
+                                                        ? <img key={i} src={block.style_variables[`image${i}Base64`]} style={{ width: '100%', height: layout === 'stacked' ? '36px' : '42px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }} />
+                                                        : <div key={i} style={{ width: '100%', height: layout === 'stacked' ? '36px' : '42px', background: 'var(--bg-secondary)', border: '2px dashed var(--border-subtle)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>📸</div>
+                                                ))}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                <span className="stat-pill">{{stacked:'Empilhadas','side-by-side':'Lado a lado','grid-4':'Grade 2×2'}[layout]}</span>
+                                                {block.style_variables?.exclusivePage && <span className="stat-pill" style={{ color: 'var(--accent-indigo)' }}>📄 Pág. própria</span>}
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         ) : block.type === BLOCK_TYPES.TESTIMONIAL ? (
                             <div className="block-content-summary" onClick={() => onEditContent(block.id)}>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

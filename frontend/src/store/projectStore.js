@@ -212,11 +212,41 @@ export class ProjectStore {
     loadProject(projectData) {
         this._project = structuredClone(projectData);
 
-        // Migração de blocos antigos
+        // Migração de blocos legados
         if (this._project.blocks) {
             this._project.blocks.forEach(b => {
-                if (b.type === 'depoimento') {
-                    b.type = 'testimonial';
+                // Nomenclatura antiga
+                if (b.type === 'depoimento') b.type = 'testimonial';
+                if (b.type === 'image')       b.type = 'image'; // já correto
+
+                // image_inline → image (sem página própria)
+                if (b.type === 'image_inline') {
+                    b.type = 'image';
+                    b.style_variables = { ...(b.style_variables || {}), exclusivePage: false };
+                }
+
+                // image_page → image (com página própria ativada)
+                if (b.type === 'image_page') {
+                    b.type = 'image';
+                    b.style_variables = { ...(b.style_variables || {}), exclusivePage: true };
+                }
+
+                // image_double → image_grid (layout side-by-side)
+                if (b.type === 'image_double') {
+                    b.type = 'image_grid';
+                    b.style_variables = {
+                        ...(b.style_variables || {}),
+                        gridLayout: 'side-by-side',
+                    };
+                }
+
+                // image_stack → image_grid (layout stacked)
+                if (b.type === 'image_stack') {
+                    b.type = 'image_grid';
+                    b.style_variables = {
+                        ...(b.style_variables || {}),
+                        gridLayout: 'stacked',
+                    };
                 }
             });
         }

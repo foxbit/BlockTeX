@@ -466,32 +466,855 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                 </div>
             )}
 
-            {block.type === BLOCK_TYPES.IMAGE && (
+                        {block.type === BLOCK_TYPES.IMAGE && (
                 <div className="inspector-section">
-                    <div className="inspector-section-title">Configurações da Imagem</div>
+                    <div className="inspector-section-title">Imagem</div>
+
+                    {/* Upload */}
                     <div className="form-group">
-                        <label className="form-label">Legenda</label>
-                        <input
-                            className="form-input"
-                            value={style_variables.caption || ''}
-                            onChange={e => onUpdateStyleVars({ caption: e.target.value })}
-                            placeholder="Legenda da figura..."
+                        <label className="form-label">Upload de Imagem</label>
+                        <input type="file" accept="image/*" style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = ev => onUpdateStyleVars({
+                                        imageBase64: ev.target.result,
+                                        filename: (style_variables.filename || file.name.replace(/[^a-zA-Z0-9._-]/g, '_')),
+                                    });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
                         />
                     </div>
+                    {style_variables.imageBase64 && (
+                        <div style={{ marginBottom: '12px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                            <img src={style_variables.imageBase64} alt="preview" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                    )}
+
+                    {/* Exclusive page toggle */}
+                    <div className="toggle-group" style={{ marginBottom: '8px' }}>
+                        <span className="toggle-label" style={{ fontWeight: 600 }}>📄 Página própria</span>
+                        <div className={`toggle ${style_variables.exclusivePage ? 'on' : ''}`}
+                            onClick={() => onUpdateStyleVars({ exclusivePage: !style_variables.exclusivePage })} />
+                    </div>
+
+                    {/* ── INLINE mode controls ────────────────── */}
+                    {!style_variables.exclusivePage && (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label">Layout no texto</label>
+                                <select className="form-select" value={style_variables.layout || 'center'}
+                                    onChange={e => onUpdateStyleVars({ layout: e.target.value })}>
+                                    <option value="center">Centro (bloco flutuante)</option>
+                                    <option value="full">Largura total</option>
+                                    <option value="left">Flutua à esquerda (texto ao redor)</option>
+                                    <option value="right">Flutua à direita (texto ao redor)</option>
+                                </select>
+                            </div>
+                            {(style_variables.layout === 'center' || !style_variables.layout) && (
+                                <div className="form-group">
+                                    <label className="form-label">Largura <span style={{ float:'right', color:'var(--text-muted)', fontWeight:400 }}>{Math.round((parseFloat(style_variables.width) || 0.8)*100)}%</span></label>
+                                    <input type="range" min="0.2" max="1.0" step="0.05"
+                                        value={style_variables.width || '0.8'}
+                                        onChange={e => onUpdateStyleVars({ width: e.target.value })}
+                                        style={{ width: '100%', accentColor: 'var(--accent-indigo)' }} />
+                                </div>
+                            )}
+                            <div className="form-group">
+                                <label className="form-label">Posição (float LaTeX)</label>
+                                <select className="form-select" value={style_variables.floatPos || 'h'}
+                                    onChange={e => onUpdateStyleVars({ floatPos: e.target.value })}>
+                                    <option value="h">h — preferencialmente aqui</option>
+                                    <option value="H">H — exatamente aqui (fixo)</option>
+                                    <option value="t">t — topo da página</option>
+                                    <option value="b">b — rodapé da página</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── EXCLUSIVE PAGE mode controls ─────────── */}
+                    {style_variables.exclusivePage && (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label">Modo de preenchimento</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
+                                    {[
+                                        { value: 'fit',     label: '⬜ Fit',     desc: 'Mantém proporção, cabe na área (pode ter margens brancas)' },
+                                        { value: 'stretch', label: '⬛ Stretch', desc: 'Preenche a área de texto — mantém proporção com crop' },
+                                        { value: 'bleed',   label: '◼ Sangria', desc: 'Preenche toda a página incluindo margens' },
+                                    ].map(opt => {
+                                        const isActive = (style_variables.fillMode || 'fit') === opt.value;
+                                        return (
+                                            <button key={opt.value} title={opt.desc}
+                                                onClick={() => onUpdateStyleVars({ fillMode: opt.value })}
+                                                style={{
+                                                    padding: '7px 4px', fontSize: '10px', textAlign: 'center',
+                                                    border: '1px solid', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                                    background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                                    borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                                    color: isActive ? 'white' : 'var(--text-secondary)',
+                                                    transition: 'all 0.15s',
+                                                }}>{opt.label}</button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {(style_variables.fillMode === 'stretch' || style_variables.fillMode === 'bleed') && (
+                                <>
+                                    <div className="toggle-group">
+                                        <span className="toggle-label">Manter proporção (recortar excesso)</span>
+                                        <div className={`toggle ${style_variables.keepRatio !== false ? 'on' : ''}`}
+                                            onClick={() => onUpdateStyleVars({ keepRatio: style_variables.keepRatio === false })} />
+                                    </div>
+                                    {style_variables.keepRatio !== false && (
+                                        <div className="form-group" style={{ marginTop: '8px' }}>
+                                            <label className="form-label">Origem do recorte</label>
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                {[{ value: 'top', label: '▲ Topo' }, { value: 'center', label: '● Centro' }, { value: 'bottom', label: '▼ Base' }].map(opt => {
+                                                    const isActive = (style_variables.cropAnchor || 'center') === opt.value;
+                                                    return (
+                                                        <button key={opt.value}
+                                                            onClick={() => onUpdateStyleVars({ cropAnchor: opt.value })}
+                                                            style={{
+                                                                flex: 1, padding: '6px 4px', fontSize: '10px',
+                                                                border: '1px solid', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                                                background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                                                borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                                                color: isActive ? 'white' : 'var(--text-secondary)',
+                                                                transition: 'all 0.15s',
+                                                            }}>{opt.label}</button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            <div className="form-group">
+                                <label className="form-label">Título (opcional)</label>
+                                <input className="form-input" value={style_variables.title || ''}
+                                    onChange={e => onUpdateStyleVars({ title: e.target.value })}
+                                    placeholder="Título sobre a imagem" />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Estilo da página</label>
+                                <select className="form-select" value={style_variables.pageStyle || 'empty'}
+                                    onChange={e => onUpdateStyleVars({ pageStyle: e.target.value })}>
+                                    <option value="empty">Sem cabeçalho/rodapé</option>
+                                    <option value="plain">Apenas numeração</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
+
                     <div className="form-group">
-                        <label className="form-label">Largura (fração da página)</label>
+                        <label className="form-label">Legenda</label>
+                        <input className="form-input" value={style_variables.caption || ''}
+                            onChange={e => onUpdateStyleVars({ caption: e.target.value })}
+                            placeholder="Legenda opcional" />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Nome do arquivo (export)</label>
+                        <input className="form-input" value={style_variables.filename || ''}
+                            onChange={e => onUpdateStyleVars({ filename: e.target.value.replace(/[^a-zA-Z0-9._-]/g, '_') })}
+                            placeholder="foto.jpg" />
+                    </div>
+                </div>
+            )}
+
+            {block.type === BLOCK_TYPES.IMAGE_GRID && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Grade de Imagens</div>
+
+                    {/* Layout selector */}
+                    <div className="form-group">
+                        <label className="form-label">Layout</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
+                            {[
+                                { value: 'stacked',      label: '☰ Empilhadas',   desc: '2 fotos uma sobre a outra' },
+                                { value: 'side-by-side', label: '⊟ Lado a lado',  desc: '2 fotos lado a lado' },
+                                { value: 'grid-4',       label: '⊞ Grade 2×2',    desc: '4 fotos em grid' },
+                            ].map(opt => {
+                                const isActive = (style_variables.gridLayout || 'side-by-side') === opt.value;
+                                return (
+                                    <button key={opt.value} title={opt.desc}
+                                        onClick={() => onUpdateStyleVars({ gridLayout: opt.value })}
+                                        style={{
+                                            padding: '7px 4px', fontSize: '10px', textAlign: 'center',
+                                            border: '1px solid', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                            background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                            borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                            color: isActive ? 'white' : 'var(--text-secondary)',
+                                            transition: 'all 0.15s',
+                                        }}>{opt.label}</button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Image slots */}
+                    {[1, 2, ...(style_variables.gridLayout === 'grid-4' ? [3, 4] : [])].map(i => (
+                        <div key={i} style={{ marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border-subtle)' }}>
+                            <div className="inspector-section-title" style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                                Imagem {i}
+                            </div>
+                            <input type="file" accept="image/*" style={{ fontSize: '11px', marginBottom: '6px' }}
+                                onChange={e => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = ev => onUpdateStyleVars({
+                                            [`image${i}Base64`]: ev.target.result,
+                                            [`filename${i}`]: style_variables[`filename${i}`] || file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                        });
+                                        reader.readAsDataURL(file);
+                                    }
+                                }}
+                            />
+                            {style_variables[`image${i}Base64`] && (
+                                <div style={{ marginBottom: '6px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                                    <img src={style_variables[`image${i}Base64`]} style={{ width: '100%', maxHeight: '70px', objectFit: 'cover', display: 'block' }} />
+                                </div>
+                            )}
+                            <input className="form-input" value={style_variables[`caption${i}`] || ''}
+                                onChange={e => onUpdateStyleVars({ [`caption${i}`]: e.target.value })}
+                                placeholder={`Legenda da imagem ${i}`}
+                                style={{ fontSize: '11px' }} />
+                        </div>
+                    ))}
+
+                    {/* Shared controls */}
+                    <div className="form-group">
+                        <label className="form-label">
+                            Largura de cada imagem
+                            <span style={{ float: 'right', color: 'var(--text-muted)', fontWeight: 400 }}>
+                                {Math.round((parseFloat(style_variables.imageWidth) || (style_variables.gridLayout === 'grid-4' ? 0.47 : 0.48)) * 100)}%
+                            </span>
+                        </label>
+                        <input type="range" min="0.3" max="0.75" step="0.02"
+                            value={style_variables.imageWidth || (style_variables.gridLayout === 'grid-4' ? '0.47' : '0.48')}
+                            onChange={e => onUpdateStyleVars({ imageWidth: e.target.value })}
+                            style={{ width: '100%', accentColor: 'var(--accent-indigo)' }} />
+                    </div>
+
+                    {(style_variables.gridLayout === 'stacked' || style_variables.gridLayout === 'grid-4') && (
+                        <div className="form-group">
+                            <label className="form-label">Espaçamento entre imagens</label>
+                            <select className="form-select" value={style_variables.spacing || '1em'}
+                                onChange={e => onUpdateStyleVars({ spacing: e.target.value })}>
+                                <option value="0.5em">Pequeno</option>
+                                <option value="1em">Médio</option>
+                                <option value="2em">Grande</option>
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="form-group">
+                        <label className="form-label">Legenda geral (opcional)</label>
+                        <input className="form-input" value={style_variables.caption || ''}
+                            onChange={e => onUpdateStyleVars({ caption: e.target.value })}
+                            placeholder="Legenda para o conjunto de imagens" />
+                    </div>
+
+                    <div className="divider" style={{ margin: '12px 0' }} />
+
+                    {/* Exclusive page toggle */}
+                    <div className="toggle-group">
+                        <span className="toggle-label" style={{ fontWeight: 600 }}>📄 Página própria</span>
+                        <div className={`toggle ${style_variables.exclusivePage ? 'on' : ''}`}
+                            onClick={() => onUpdateStyleVars({ exclusivePage: !style_variables.exclusivePage })} />
+                    </div>
+                    {style_variables.exclusivePage && (
+                        <p style={{ fontSize: '10px', color: 'var(--accent-indigo)', marginTop: '6px', lineHeight: 1.5, background: 'rgba(99,102,241,0.08)', padding: '6px 8px', borderRadius: 'var(--radius-sm)' }}>
+                            As imagens ocuparão uma página isolada no documento.
+                        </p>
+                    )}
+                </div>
+            )}
+
+{block.type === BLOCK_TYPES.TESTIMONIAL && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Dados do Depoimento</div>
+
+                    <div className="form-group">
+                        <label className="form-label">Nome da Pessoa</label>
                         <input
                             className="form-input"
-                            type="number"
+                            value={style_variables.personName || ''}
+                            onChange={e => onUpdateStyleVars({ personName: e.target.value })}
+                            placeholder="Ex: Maria"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Citação / Frase Fixa (Negrito)</label>
+                        <input
+                            className="form-input"
+                            value={style_variables.quote || ''}
+                            onChange={e => onUpdateStyleVars({ quote: e.target.value })}
+                            placeholder='Ex: "Sigo por paixão"'
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Intro (Itálico)</label>
+                        <textarea
+                            className="form-input"
+                            value={style_variables.intro || ''}
+                            onChange={e => onUpdateStyleVars({ intro: e.target.value })}
+                            placeholder="Texto introdutório menor..."
+                            rows={3}
+                        />
+                    </div>
+
+                    <div className="divider" style={{ margin: '16px 0' }} />
+                    <div className="inspector-section-title">Imagem (Retrato)</div>
+
+                    <div className="form-group">
+                        <label className="form-label">Upload de Imagem</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({ imageBase64: ev.target.result });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {style_variables.imageBase64 && (
+                        <>
+                            <div className="form-group">
+                                <label className="form-label">Largura do Quadro (ex: 0.3 ou 4cm)</label>
+                                <input
+                                    className="form-input"
+                                    value={style_variables.frameWidth || '4cm'}
+                                    onChange={e => onUpdateStyleVars({ frameWidth: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Tamanho/Zoom na renderização (ex: \textwidth ou 6cm)</label>
+                                <input
+                                    className="form-input"
+                                    value={style_variables.imageZoom || '\\textwidth'}
+                                    onChange={e => onUpdateStyleVars({ imageZoom: e.target.value })}
+                                />
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {block.type === BLOCK_TYPES.IMAGE_INLINE && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Configurações da Imagem</div>
+
+                    {/* Upload */}
+                    <div className="form-group">
+                        <label className="form-label">Upload de Imagem</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({
+                                        imageBase64: ev.target.result,
+                                        filename: style_variables.filename || file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                    });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {style_variables.imageBase64 && (
+                        <div style={{ marginBottom: '12px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                            <img src={style_variables.imageBase64} alt="preview" style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                    )}
+
+                    {/* Layout */}
+                    <div className="form-group">
+                        <label className="form-label">Diagramação no PDF</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '4px' }}>
+                            {[
+                                { value: 'center', label: '⬛ Centralizado', desc: 'Bloco no centro da página' },
+                                { value: 'full', label: '◼ Largura total', desc: 'Ocupa toda a largura da página' },
+                                { value: 'left', label: '◧ Wrap esquerda', desc: 'Imagem à esquerda, texto flui à direita' },
+                                { value: 'right', label: '◨ Wrap direita', desc: 'Imagem à direita, texto flui à esquerda' },
+                            ].map(opt => {
+                                const isActive = (style_variables.layout || 'center') === opt.value;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => onUpdateStyleVars({ layout: opt.value })}
+                                        title={opt.desc}
+                                        style={{
+                                            padding: '8px 6px',
+                                            fontSize: '10px',
+                                            textAlign: 'center',
+                                            border: '1px solid',
+                                            borderRadius: 'var(--radius-sm)',
+                                            cursor: 'pointer',
+                                            background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                            borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                            color: isActive ? 'white' : 'var(--text-secondary)',
+                                            transition: 'all 0.15s',
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {(style_variables.layout === 'left' || style_variables.layout === 'right') && (
+                            <p style={{ fontSize: '10px', color: 'var(--accent-indigo)', marginTop: '8px', lineHeight: 1.5, background: 'rgba(99,102,241,0.08)', padding: '6px 8px', borderRadius: 'var(--radius-sm)' }}>
+                                💡 Modo wrap: escreva o texto do parágrafo no campo de conteúdo do bloco. Ele fluirá ao lado da imagem no PDF.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Largura */}
+                    <div className="form-group">
+                        <label className="form-label">
+                            Largura da imagem
+                            <span style={{ float: 'right', color: 'var(--text-muted)', fontWeight: 400 }}>
+                                {Math.round((parseFloat(style_variables.width) || 0.8) * 100)}% da página
+                            </span>
+                        </label>
+                        <input
+                            type="range"
                             min="0.1"
                             max="1.0"
                             step="0.05"
                             value={style_variables.width || '0.8'}
                             onChange={e => onUpdateStyleVars({ width: e.target.value })}
+                            style={{ width: '100%', accentColor: 'var(--accent-indigo)' }}
                         />
+                    </div>
+
+                    {/* Posição LaTeX — só para modos não-wrap */}
+                    {(style_variables.layout || 'center') !== 'left' && (style_variables.layout || 'center') !== 'right' && (
+                        <div className="form-group">
+                            <label className="form-label">Posição no fluxo (LaTeX float)</label>
+                            <select
+                                className="form-select"
+                                value={style_variables.floatPos || 'h'}
+                                onChange={e => onUpdateStyleVars({ floatPos: e.target.value })}
+                            >
+                                <option value="h">h — preferencialmente aqui</option>
+                                <option value="H">H — exatamente aqui (fixo)</option>
+                                <option value="t">t — topo da página</option>
+                                <option value="b">b — rodapé da página</option>
+                                <option value="p">p — página exclusiva de floats</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Legenda */}
+                    <div className="form-group">
+                        <label className="form-label">Legenda da figura</label>
+                        <input
+                            className="form-input"
+                            value={style_variables.caption || ''}
+                            onChange={e => onUpdateStyleVars({ caption: e.target.value })}
+                            placeholder="Ex: Figura 1 — Diagrama do processo"
+                        />
+                    </div>
+
+                    {/* Nome do arquivo */}
+                    <div className="form-group">
+                        <label className="form-label">Nome do arquivo (export)</label>
+                        <input
+                            className="form-input"
+                            value={style_variables.filename || ''}
+                            onChange={e => onUpdateStyleVars({ filename: e.target.value.replace(/[^a-zA-Z0-9._-]/g, '_') })}
+                            placeholder="Ex: grafico_vendas.jpg"
+                        />
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', display: 'block' }}>
+                            Referência para o arquivo gerado no PDF
+                        </span>
                     </div>
                 </div>
             )}
+
+            {block.type === BLOCK_TYPES.IMAGE_PAGE && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Página de Imagem</div>
+
+                    <div className="form-group">
+                        <label className="form-label">Upload de Imagem</label>
+                        <input type="file" accept="image/*" style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({
+                                        imageBase64: ev.target.result,
+                                        filename: style_variables.filename || file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                    });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {style_variables.imageBase64 && (
+                        <div style={{ marginBottom: '12px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                            <img src={style_variables.imageBase64} alt="preview" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                    )}
+
+                    <div className="form-group">
+                        <label className="form-label">Título (opcional)</label>
+                        <input className="form-input" value={style_variables.title || ''}
+                            onChange={e => onUpdateStyleVars({ title: e.target.value })}
+                            placeholder="Ex: Capítulo 3 — O Início" />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Legenda (opcional)</label>
+                        <input className="form-input" value={style_variables.caption || ''}
+                            onChange={e => onUpdateStyleVars({ caption: e.target.value })}
+                            placeholder="Créditos ou legenda da imagem" />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Modo de preenchimento</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px', marginTop: '4px' }}>
+                            {[
+                                { value: 'fit',     label: '⬜ Fit',      desc: 'Mantém proporção, cabe na página (pode ter margens brancas)' },
+                                { value: 'stretch', label: '⬛ Stretch',  desc: 'Estica para preencher a área de texto (pode distorcer)' },
+                                { value: 'bleed',   label: '◼ Sangria',  desc: 'Preenche toda a página incluindo margens (full bleed)' },
+                            ].map(opt => {
+                                const isActive = (style_variables.fillMode || 'fit') === opt.value;
+                                return (
+                                    <button key={opt.value} title={opt.desc}
+                                        onClick={() => onUpdateStyleVars({ fillMode: opt.value })}
+                                        style={{
+                                            padding: '7px 4px', fontSize: '10px', textAlign: 'center',
+                                            border: '1px solid', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                            background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                            borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                            color: isActive ? 'white' : 'var(--text-secondary)',
+                                            transition: 'all 0.15s',
+                                        }}
+                                    >{opt.label}</button>
+                                );
+                            })}
+                        </div>
+                        <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.5 }}>
+                            {{
+                                fit:     '⬜ Fit — imagem respeitará as margens do documento.',
+                                stretch: '⬛ Stretch — imagem preencherá a área de texto (possível distorção).',
+                                bleed:   '◼ Sangria — imagem cobre a página inteira, incluindo margens.',
+                            }[style_variables.fillMode || 'fit']}
+                        </p>
+                    </div>
+
+                    {/* Keep ratio toggle — only relevant for Stretch and Bleed modes */}
+                    {(style_variables.fillMode === 'stretch' || style_variables.fillMode === 'bleed') && (
+                        <>
+                            <div className="toggle-group" style={{ marginTop: '4px' }}>
+                                <span className="toggle-label">
+                                    Manter proporção (recortar excesso)
+                                </span>
+                                <div
+                                    className={`toggle ${style_variables.keepRatio !== false ? 'on' : ''}`}
+                                    onClick={() => onUpdateStyleVars({ keepRatio: style_variables.keepRatio === false ? true : false })}
+                                />
+                            </div>
+                            {style_variables.keepRatio !== false && (
+                                <div className="form-group" style={{ marginTop: '8px' }}>
+                                    <label className="form-label">Origem do recorte</label>
+                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                        {[
+                                            { value: 'top',    label: '▲ Topo' },
+                                            { value: 'center', label: '● Centro' },
+                                            { value: 'bottom', label: '▼ Base' },
+                                        ].map(opt => {
+                                            const isActive = (style_variables.cropAnchor || 'center') === opt.value;
+                                            return (
+                                                <button key={opt.value}
+                                                    onClick={() => onUpdateStyleVars({ cropAnchor: opt.value })}
+                                                    style={{
+                                                        flex: 1, padding: '6px 4px', fontSize: '10px',
+                                                        border: '1px solid', borderRadius: 'var(--radius-sm)',
+                                                        cursor: 'pointer', textAlign: 'center',
+                                                        background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                                        borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                                        color: isActive ? 'white' : 'var(--text-secondary)',
+                                                        transition: 'all 0.15s',
+                                                    }}
+                                                >{opt.label}</button>
+                                            );
+                                        })}
+                                    </div>
+                                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.4 }}>
+                                        Define qual parte da imagem aparece quando o excesso é recortado.
+                                    </p>
+                                </div>
+                            )}
+                            {style_variables.keepRatio === false && (
+                                <p style={{ fontSize: '10px', color: 'rgba(244,63,94,0.8)', marginTop: '4px', lineHeight: 1.4 }}>
+                                    ⚠️ Sem proporção: a imagem será esticada para preencher a área, podendo distorcer.
+                                </p>
+                            )}
+                        </>
+                    )}
+
+                    <div className="form-group">
+                        <label className="form-label">Estilo da página</label>
+                        <select className="form-select" value={style_variables.pageStyle || 'empty'}
+                            onChange={e => onUpdateStyleVars({ pageStyle: e.target.value })}>
+                            <option value="empty">Sem cabeçalho/rodapé</option>
+                            <option value="plain">Apenas numeração</option>
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Nome do arquivo (export)</label>
+                        <input className="form-input" value={style_variables.filename || ''}
+                            onChange={e => onUpdateStyleVars({ filename: e.target.value.replace(/[^a-zA-Z0-9._-]/g, '_') })}
+                            placeholder="Ex: pagina_foto.jpg" />
+                    </div>
+
+                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.5, background: 'rgba(99,102,241,0.06)', padding: '6px 8px', borderRadius: 'var(--radius-sm)' }}>
+                        📄 Este bloco gera uma página exclusiva com a imagem centralizada, sem interferir no fluxo do texto ao redor.
+                    </p>
+                </div>
+            )}
+
+            {block.type === BLOCK_TYPES.IMAGE_DOUBLE && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Imagem Dupla — Lado a lado</div>
+
+                    {/* Image 1 */}
+                    <div className="inspector-section-title" style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '8px' }}>Imagem 1 (esquerda)</div>
+                    <div className="form-group">
+                        <input type="file" accept="image/*" style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({
+                                        image1Base64: ev.target.result,
+                                        filename1: style_variables.filename1 || file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                    });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+                    {style_variables.image1Base64 && (
+                        <div style={{ marginBottom: '8px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                            <img src={style_variables.image1Base64} style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                    )}
+                    <div className="form-group">
+                        <input className="form-input" value={style_variables.caption1 || ''}
+                            onChange={e => onUpdateStyleVars({ caption1: e.target.value })}
+                            placeholder="Legenda da imagem 1" />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Largura 1 <span style={{ float:'right', color:'var(--text-muted)', fontWeight:400 }}>{Math.round((parseFloat(style_variables.width1) || 0.48)*100)}%</span></label>
+                        <input type="range" min="0.2" max="0.75" step="0.02"
+                            value={style_variables.width1 || '0.48'}
+                            onChange={e => onUpdateStyleVars({ width1: e.target.value })}
+                            style={{ width: '100%', accentColor: 'var(--accent-indigo)' }} />
+                    </div>
+
+                    <div className="divider" style={{ margin: '12px 0' }} />
+
+                    {/* Image 2 */}
+                    <div className="inspector-section-title" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Imagem 2 (direita)</div>
+                    <div className="form-group">
+                        <input type="file" accept="image/*" style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({
+                                        image2Base64: ev.target.result,
+                                        filename2: style_variables.filename2 || file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                    });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+                    {style_variables.image2Base64 && (
+                        <div style={{ marginBottom: '8px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                            <img src={style_variables.image2Base64} style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                    )}
+                    <div className="form-group">
+                        <input className="form-input" value={style_variables.caption2 || ''}
+                            onChange={e => onUpdateStyleVars({ caption2: e.target.value })}
+                            placeholder="Legenda da imagem 2" />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Largura 2 <span style={{ float:'right', color:'var(--text-muted)', fontWeight:400 }}>{Math.round((parseFloat(style_variables.width2) || 0.48)*100)}%</span></label>
+                        <input type="range" min="0.2" max="0.75" step="0.02"
+                            value={style_variables.width2 || '0.48'}
+                            onChange={e => onUpdateStyleVars({ width2: e.target.value })}
+                            style={{ width: '100%', accentColor: 'var(--accent-indigo)' }} />
+                    </div>
+
+
+                    <div className="divider" style={{ margin: '16px 0' }} />
+                    <div className="toggle-group">
+                        <span className="toggle-label" style={{ fontWeight: 600 }}>
+                            📄 Página própria
+                        </span>
+                        <div
+                            className={`toggle ${style_variables.exclusivePage ? 'on' : ''}`}
+                            onClick={() => onUpdateStyleVars({ exclusivePage: !style_variables.exclusivePage })}
+                        />
+                    </div>
+                    {style_variables.exclusivePage && (
+                        <p style={{ fontSize: '10px', color: 'var(--accent-indigo)', marginTop: '6px', lineHeight: 1.5, background: 'rgba(99,102,241,0.08)', padding: '6px 8px', borderRadius: 'var(--radius-sm)' }}>
+                            O bloco ocupará uma página isolada — o conteúdo anterior e posterior serão quebrados ao redor dele.
+                        </p>
+                    )}
+                    <div className="form-group">
+                        <label className="form-label">Posição (float)</label>
+                        <select className="form-select" value={style_variables.floatPos || 'h'}
+                            onChange={e => onUpdateStyleVars({ floatPos: e.target.value })}
+                            disabled={style_variables.exclusivePage}>
+                            <option value="h">h — preferencialmente aqui</option>
+                            <option value="H">H — exatamente aqui (fixo)</option>
+                            <option value="t">t — topo</option>
+                            <option value="b">b — rodapé</option>
+                        </select>
+                    </div>
+                </div>
+            )}
+
+            {block.type === BLOCK_TYPES.IMAGE_STACK && (
+                <div className="inspector-section">
+                    <div className="inspector-section-title">Imagens Empilhadas — Uma sobre a outra</div>
+
+                    {/* Image 1 */}
+                    <div className="inspector-section-title" style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '8px' }}>Imagem 1 (superior)</div>
+                    <div className="form-group">
+                        <input type="file" accept="image/*" style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({
+                                        image1Base64: ev.target.result,
+                                        filename1: style_variables.filename1 || file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                    });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+                    {style_variables.image1Base64 && (
+                        <div style={{ marginBottom: '8px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                            <img src={style_variables.image1Base64} style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                    )}
+                    <div className="form-group">
+                        <input className="form-input" value={style_variables.caption1 || ''}
+                            onChange={e => onUpdateStyleVars({ caption1: e.target.value })}
+                            placeholder="Legenda da imagem 1" />
+                    </div>
+
+                    <div className="divider" style={{ margin: '12px 0' }} />
+
+                    {/* Image 2 */}
+                    <div className="inspector-section-title" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Imagem 2 (inferior)</div>
+                    <div className="form-group">
+                        <input type="file" accept="image/*" style={{ fontSize: '11px' }}
+                            onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => onUpdateStyleVars({
+                                        image2Base64: ev.target.result,
+                                        filename2: style_variables.filename2 || file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+                                    });
+                                    reader.readAsDataURL(file);
+                                }
+                            }}
+                        />
+                    </div>
+                    {style_variables.image2Base64 && (
+                        <div style={{ marginBottom: '8px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                            <img src={style_variables.image2Base64} style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
+                        </div>
+                    )}
+                    <div className="form-group">
+                        <input className="form-input" value={style_variables.caption2 || ''}
+                            onChange={e => onUpdateStyleVars({ caption2: e.target.value })}
+                            placeholder="Legenda da imagem 2" />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Largura de ambas <span style={{ float:'right', color:'var(--text-muted)', fontWeight:400 }}>{Math.round((parseFloat(style_variables.width) || 0.85)*100)}%</span></label>
+                        <input type="range" min="0.3" max="1.0" step="0.05"
+                            value={style_variables.width || '0.85'}
+                            onChange={e => onUpdateStyleVars({ width: e.target.value })}
+                            style={{ width: '100%', accentColor: 'var(--accent-indigo)' }} />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Espaçamento entre imagens</label>
+                        <select className="form-select" value={style_variables.spacing || '1em'}
+                            onChange={e => onUpdateStyleVars({ spacing: e.target.value })}>
+                            <option value="0.5em">Pequeno (0.5em)</option>
+                            <option value="1em">Médio (1em)</option>
+                            <option value="2em">Grande (2em)</option>
+                            <option value="3em">Muito grande (3em)</option>
+                        </select>
+                    </div>
+
+
+                    <div className="divider" style={{ margin: '16px 0' }} />
+                    <div className="toggle-group">
+                        <span className="toggle-label" style={{ fontWeight: 600 }}>
+                            📄 Página própria
+                        </span>
+                        <div
+                            className={`toggle ${style_variables.exclusivePage ? 'on' : ''}`}
+                            onClick={() => onUpdateStyleVars({ exclusivePage: !style_variables.exclusivePage })}
+                        />
+                    </div>
+                    {style_variables.exclusivePage && (
+                        <p style={{ fontSize: '10px', color: 'var(--accent-indigo)', marginTop: '6px', lineHeight: 1.5, background: 'rgba(99,102,241,0.08)', padding: '6px 8px', borderRadius: 'var(--radius-sm)' }}>
+                            O bloco ocupará uma página isolada — o conteúdo anterior e posterior serão quebrados ao redor dele.
+                        </p>
+                    )}
+                    <div className="form-group">
+                        <label className="form-label">Posição (float)</label>
+                        <select className="form-select" value={style_variables.floatPos || 'h'}
+                            onChange={e => onUpdateStyleVars({ floatPos: e.target.value })}
+                            disabled={style_variables.exclusivePage}>
+                            <option value="h">h — preferencialmente aqui</option>
+                            <option value="H">H — exatamente aqui (fixo)</option>
+                            <option value="t">t — topo</option>
+                            <option value="b">b — rodapé</option>
+                        </select>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
