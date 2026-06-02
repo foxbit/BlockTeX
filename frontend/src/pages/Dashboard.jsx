@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBackend } from '../hooks/useBackend';
 import { NewProjectModal } from '../components/Modals';
 import { DEFAULT_PROJECT } from '../store/projectStore';
+import { ThemeSelector } from '../components/ThemeSelector';
 
 export function Dashboard() {
     const navigate = useNavigate();
@@ -94,6 +95,7 @@ export function Dashboard() {
                 <h1 className="dashboard-title">Projetos no Servidor</h1>
                 <div className="dashboard-header-right">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                        <ThemeSelector />
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: status.connected ? '#10b981' : '#f43f5e' }}></div>
                         {status.connected ? `Backend Online (Node ${status.node_version})` : 'Backend Offline'}
                     </div>

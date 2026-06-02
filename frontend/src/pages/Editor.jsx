@@ -11,6 +11,7 @@ import { generateTex } from '../lib/latexGenerator.js';
 import { useBackend } from '../hooks/useBackend.js';
 import { TipTapDrawer } from '../components/TipTapDrawer.jsx';
 import { BLOCK_TYPES } from '../lib/blockTypes.js';
+import { ThemeSelector } from '../components/ThemeSelector.jsx';
 
 // ── Gear icon SVG ──────────────────────────────────────────────
 const ChevronDown = () => (
@@ -316,6 +317,7 @@ export default function Editor() {
 
 
         <div className="topbar-actions">
+          <ThemeSelector />
           {/* Undo/Redo */}
           <button className="btn btn-ghost btn-icon" onClick={() => store.undo()} title="Ctrl+Z" disabled={!store.canUndo()}>↩</button>
           <button className="btn btn-ghost btn-icon" onClick={() => store.redo()} title="Ctrl+Y" disabled={!store.canRedo()}>↪</button>

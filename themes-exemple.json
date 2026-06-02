@@ -1,0 +1,110 @@
+{
+    "adwaita_light": {
+        "name": "Adwaita Light (Default)",
+        "meta": {
+            "variant": "light",
+            "description": "Standard GNOME Adwaita light aesthetic"
+        },
+        "colors": {
+            "window_bg": "#f6f5f4",
+            "editor_bg": "#ffffff",
+            "foreground": "#242424",
+            "muted_foreground": "#6e6e6e",
+            "accent": "#3584e4",
+            "accent_hover": "#1c71d8",
+            "selection_bg": "#bee3f8",
+            "selection_text": "#000000",
+            "border": "#e1e1e1",
+            "hr_color": "#cccfc2",
+            "blockquote": {
+                "border": "#3584e4",
+                "bg": "#f9f9f9",
+                "text": "#505050"
+            },
+            "code": {
+                "bg": "#f6f5f4",
+                "text": "#c7254e",
+                "block_bg": "#f6f5f4",
+                "block_text": "#242424",
+                "block_border": "#e1e1e1"
+            },
+            "table": {
+                "header_bg": "#f6f5f4",
+                "row_alt_bg": "#fafafa",
+                "border": "#e1e1e1"
+            }
+        }
+    },
+    "adwaita_dark": {
+        "name": "Adwaita Dark",
+        "meta": {
+            "variant": "dark",
+            "description": "GNOME Dark mode theme tailored for nighttime writing"
+        },
+        "colors": {
+            "window_bg": "#242424",
+            "editor_bg": "#1e1e1e",
+            "foreground": "#e0e0e0",
+            "muted_foreground": "#9a9a9a",
+            "accent": "#3584e4",
+            "accent_hover": "#62a0ea",
+            "selection_bg": "#184980",
+            "selection_text": "#ffffff",
+            "border": "#303030",
+            "hr_color": "#404040",
+            "blockquote": {
+                "border": "#3584e4",
+                "bg": "#2d2d2d",
+                "text": "#bcbcbc"
+            },
+            "code": {
+                "bg": "#2d2d2d",
+                "text": "#e06c75",
+                "block_bg": "#2d2d2d",
+                "block_text": "#e0e0e0",
+                "block_border": "#383838"
+            },
+            "table": {
+                "header_bg": "#2d2d2d",
+                "row_alt_bg": "#242424",
+                "border": "#383838"
+            }
+        }
+    },
+    "adwaita_sepia": {
+        "name": "Adwaita Sepia",
+        "meta": {
+            "variant": "warm",
+            "description": "Soft beige tones optimized for long reading and writing sessions with minimal strain"
+        },
+        "colors": {
+            "window_bg": "#f6f0e4",
+            "editor_bg": "#f4ecd8",
+            "foreground": "#5b4636",
+            "muted_foreground": "#8c7662",
+            "accent": "#986a44",
+            "accent_hover": "#734f31",
+            "selection_bg": "#e6d3be",
+            "selection_text": "#433422",
+            "border": "#e1d7c1",
+            "hr_color": "#d7ccb5",
+            "blockquote": {
+                "border": "#986a44",
+                "bg": "#ede3cb",
+                "text": "#6b5645"
+            },
+            "code": {
+                "bg": "#ede3cb",
+                "text": "#b84235",
+                "block_bg": "#ede3cb",
+                "block_text": "#5b4636",
+                "block_border": "#dfd3ba"
+            },
+            "table": {
+                "header_bg": "#ede3cb",
+                "row_alt_bg": "#f0e7d0",
+                "border": "#dfd3ba"
+            }
+        }
+    }
+}
