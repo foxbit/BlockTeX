@@ -348,13 +348,6 @@ function mdToLatex(md, config = {}) {
             continue;
         }
 
-        // ── Quebra de página (inserida via botão TipTap) ──────────────────
-        if (line.trim() === '<!-- pagebreak -->') {
-            output.push('\\newpage');
-            i++;
-            continue;
-        }
-
         // ── Linha vazia ───────────────────────────────────────
         if (line.trim() === '') {
             output.push('');
