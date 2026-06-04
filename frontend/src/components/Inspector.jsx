@@ -271,6 +271,140 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                     </div>
                 </div>
             </div>
+
+            <div className="divider" />
+
+            <div className="inspector-section">
+                <div className="inspector-section-title">Tipografia do Corpo</div>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '-4px 0 14px', lineHeight: 1.5 }}>
+                    Aplicado apenas nos blocos <strong style={{ color: 'var(--text-primary)' }}>Capítulo</strong> e <strong style={{ color: 'var(--text-primary)' }}>Texto</strong>.<br />
+                    Capa, índice e blocos especiais usam estilo próprio.
+                </p>
+
+                {/* Justificação */}
+                <div className="form-group">
+                    <label className="form-label">Justificação do texto</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '5px' }}>
+                        {[
+                            { value: 'justified', label: '≡ Just.',  title: 'Justificado (padrão livro)' },
+                            { value: 'raggedright', label: '← Esq.', title: 'Alinhado à esquerda' },
+                            { value: 'raggedleft',  label: '→ Dir.', title: 'Alinhado à direita' },
+                            { value: 'centering',   label: '= Cen.', title: 'Centralizado' },
+                        ].map(opt => {
+                            const isActive = (global_setup.bodyJustify || 'justified') === opt.value;
+                            return (
+                                <button key={opt.value} title={opt.title}
+                                    onClick={() => onUpdateSetup({ bodyJustify: opt.value })}
+                                    style={{
+                                        padding: '7px 4px', fontSize: '10px', textAlign: 'center',
+                                        border: '1px solid', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                                        background: isActive ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                        borderColor: isActive ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                        color: isActive ? 'white' : 'var(--text-secondary)',
+                                        transition: 'all 0.15s',
+                                    }}>{opt.label}</button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Entrelinhas */}
+                <div className="form-group">
+                    <label className="form-label">Espaçamento entrelinhas</label>
+                    <select
+                        className="form-select"
+                        value={
+                            global_setup.bodyLinespread == null ? '__theme__' :
+                            ['1.0','1.15','1.25','1.5','2.0'].includes(global_setup.bodyLinespread)
+                                ? global_setup.bodyLinespread : '__custom__'
+                        }
+                        onChange={e => {
+                            if (e.target.value === '__theme__') onUpdateSetup({ bodyLinespread: null });
+                            else if (e.target.value === '__custom__') onUpdateSetup({ bodyLinespread: '1.3' });
+                            else onUpdateSetup({ bodyLinespread: e.target.value });
+                        }}
+                    >
+                        <option value="__theme__">Herdado do tema visual</option>
+                        <option value="1.0">1.0 — Simples</option>
+                        <option value="1.15">1.15 — Compacto</option>
+                        <option value="1.25">1.25 — Confortável</option>
+                        <option value="1.5">1.5 — Amplo</option>
+                        <option value="2.0">2.0 — Duplo</option>
+                        <option value="__custom__">Personalizado…</option>
+                    </select>
+                    {global_setup.bodyLinespread != null &&
+                     !['1.0','1.15','1.25','1.5','2.0'].includes(global_setup.bodyLinespread) && (
+                        <input
+                            className="form-input"
+                            style={{ marginTop: '6px' }}
+                            value={global_setup.bodyLinespread || ''}
+                            onChange={e => onUpdateSetup({ bodyLinespread: e.target.value })}
+                            placeholder="ex: 1.3"
+                        />
+                    )}
+                </div>
+
+                {/* Recuo e Espaço entre parágrafos */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div className="form-group">
+                        <label className="form-label">Recuo de ¶</label>
+                        <input
+                            className="form-input"
+                            value={global_setup.parindent ?? '0pt'}
+                            onChange={e => onUpdateSetup({ parindent: e.target.value })}
+                            placeholder="0pt"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Espaço entre ¶</label>
+                        <input
+                            className="form-input"
+                            value={global_setup.parskip ?? '8pt'}
+                            onChange={e => onUpdateSetup({ parskip: e.target.value })}
+                            placeholder="8pt"
+                        />
+                    </div>
+                </div>
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '-8px 0 12px', lineHeight: 1.5 }}>
+                    Use unidades LaTeX: <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>pt</code>, <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>mm</code>, <code style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px' }}>em</code>
+                </p>
+
+                <div className="divider" style={{ margin: '12px 0' }} />
+                <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                    Controle Avançado
+                </div>
+
+                {/* Hifenização */}
+                <div className="toggle-group">
+                    <span className="toggle-label">✂️ Hifenização automática</span>
+                    <Toggle
+                        value={global_setup.hyphenation !== false}
+                        onChange={v => onUpdateSetup({ hyphenation: v })}
+                    />
+                </div>
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '-4px 0 12px', lineHeight: 1.5 }}>
+                    {global_setup.hyphenation !== false
+                        ? 'LaTeX quebra palavras longas normalmente.'
+                        : 'Desativada — espaçamento pode ficar irregular.'}
+                </p>
+
+                {/* Viúvos e Órfãos */}
+                <div className="form-group">
+                    <label className="form-label">Viúvos & Órfãos</label>
+                    <select
+                        className="form-select"
+                        value={global_setup.orphanWidow || 'moderate'}
+                        onChange={e => onUpdateSetup({ orphanWidow: e.target.value })}
+                    >
+                        <option value="light">Leve — permite viúvos/órfãos</option>
+                        <option value="moderate">Moderado — evita quando possível</option>
+                        <option value="strict">Estrito — proíbe completamente</option>
+                    </select>
+                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
+                        Viúvo: última linha de ¶ no topo da página. Órfão: primeira linha no rodapé.
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }

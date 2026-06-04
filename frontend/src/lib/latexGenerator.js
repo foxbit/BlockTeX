@@ -435,6 +435,12 @@ function generatePreamble(globalSetup, metadata) {
         outerMargin = '20mm',
         topMargin = '25mm',
         bottomMargin = '20mm',
+        parindent     = '0pt',
+        parskip       = '8pt',
+        bodyLinespread = null,
+        bodyJustify   = 'justified',
+        hyphenation   = true,
+        orphanWidow   = 'moderate',
     } = globalSetup;
 
     // Resolve tema visual
@@ -516,7 +522,6 @@ function generatePreamble(globalSetup, metadata) {
         '',
         '% ─── Typography ─────────────────────────────────────',
         fontPkg.trim() || '% (fonte padrão LaTeX)',
-        themeConfig.linespread ? `\\linespread{${themeConfig.linespread}}` : '',
         themeConfig.extraPkgs  ? themeConfig.extraPkgs : '',
         themeConfig.sectionStyle ? themeConfig.sectionStyle : '',
         '',
@@ -605,11 +610,32 @@ function generatePreamble(globalSetup, metadata) {
         '\\setcounter{secnumdepth}{-2}',
         '',
         '% ─── Misc ───────────────────────────────────────────',
-        '\\usepackage{parskip}',
         '\\usepackage{emptypage} % Remove cabeçalhos de páginas em branco vazias',
-        '\\setlength{\\parindent}{0pt}',
-        '\\setlength{\\parskip}{8pt}',
         '',
+        ...(() => {
+            // ── btxbody: environment aplicado SOMENTE em blocos CHAPTER e CONTENT ──
+            const penaltyMap = { light: 500, moderate: 1000, strict: 10000 };
+            const penalty = penaltyMap[orphanWidow] || 1000;
+            const linespread = bodyLinespread || themeConfig.linespread;
+            const justifyCmd = {
+                raggedright: '  \\raggedright%',
+                raggedleft:  '  \\raggedleft%',
+                centering:   '  \\centering%',
+            }[bodyJustify] || '';
+            return [
+                '% ─── Body content environment (CHAPTER + CONTENT only) ──',
+                '\\newenvironment{btxbody}{%',
+                `  \\setlength{\\parindent}{${parindent}}%`,
+                `  \\setlength{\\parskip}{${parskip}}%`,
+                linespread ? `  \\linespread{${linespread}}\\selectfont%` : '',
+                justifyCmd,
+                !hyphenation ? '  \\hyphenpenalty=10000\\exhyphenpenalty=10000%' : '',
+                `  \\widowpenalty=${penalty}%`,
+                `  \\clubpenalty=${penalty}%`,
+                '}{}',
+                '',
+            ].filter(l => l !== '');
+        })(),
         '% ─── Title metadata (usada pelo bloco CAPA e hyperref) ──',
         `\\title{${escapeLatexTitle(title)}}`,
         `\\author{${escapeLatexTitle(author)}}`,
@@ -647,12 +673,12 @@ function blockToLatex(block, mirror = false) {
             break;
 
         case BLOCK_TYPES.CHAPTER:
-            tex += mdToLatex(content, config) + '\n';
+            tex += `\\begin{btxbody}\n${mdToLatex(content, config)}\n\\end{btxbody}\n`;
             break;
 
         case BLOCK_TYPES.CONTENT:
             if (!toc_visible) tex += `\\begingroup\\let\\addcontentsline\\@gobblethree\n`;
-            tex += mdToLatex(content, config) + '\n';
+            tex += `\\begin{btxbody}\n${mdToLatex(content, config)}\n\\end{btxbody}\n`;
             if (!toc_visible) tex += `\\endgroup\n`;
             break;
 

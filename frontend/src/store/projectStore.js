@@ -26,6 +26,13 @@ export const DEFAULT_PROJECT = {
         headerCustomEven: '',
         headerStyleOdd: 'chapter', // 'none', 'title', 'author', 'chapter', 'custom'
         headerCustomOdd: '',
+        // ── Tipografia do corpo (aplicada apenas em blocos CHAPTER e CONTENT) ──
+        parindent:      '0pt',       // recuo da 1ª linha do parágrafo
+        parskip:        '8pt',       // espaço entre parágrafos
+        bodyLinespread: null,        // null = herda do tema; ex: '1.25'
+        bodyJustify:    'justified', // 'justified' | 'raggedright' | 'raggedleft' | 'centering'
+        hyphenation:    true,        // false = desativa hifenização
+        orphanWidow:    'moderate',  // 'light'(500) | 'moderate'(1000) | 'strict'(10000)
     },
     blocks: [],
 };
