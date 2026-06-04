@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
+const DEMO_EMAIL = 'admin@blocktext.com.br';
+const DEMO_PASSWORD = 'admin123';
+
 export function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [copied, setCopied] = useState(false);
     const { login } = useAuth();
 
     const handleLogin = async (e) => {
@@ -32,6 +36,13 @@ export function Login() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAutoFill = () => {
+        setEmail(DEMO_EMAIL);
+        setPassword(DEMO_PASSWORD);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
@@ -75,6 +86,31 @@ export function Login() {
                         {loading ? 'Entrando...' : 'Acessar IDE'}
                     </button>
                 </form>
+
+                {/* Credenciais de acesso padrão */}
+                <div className="login-demo-box">
+                    <div className="login-demo-header">
+                        <span className="login-demo-icon">🔑</span>
+                        <span className="login-demo-title">Acesso Padrão</span>
+                    </div>
+                    <div className="login-demo-credentials">
+                        <div className="login-demo-row">
+                            <span className="login-demo-label">Usuário</span>
+                            <code className="login-demo-value">{DEMO_EMAIL}</code>
+                        </div>
+                        <div className="login-demo-row">
+                            <span className="login-demo-label">Senha</span>
+                            <code className="login-demo-value">{DEMO_PASSWORD}</code>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        className="login-demo-btn"
+                        onClick={handleAutoFill}
+                    >
+                        {copied ? '✓ Preenchido!' : '⚡ Preencher automaticamente'}
+                    </button>
+                </div>
             </div>
         </div>
     );

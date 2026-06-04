@@ -39,7 +39,10 @@ function escapeLatex(str, insideMath = false) {
 // Escapa apenas para uso em argumentos de comandos LaTeX (títulos, etc.)
 function escapeLatexTitle(str) {
     str = stripEmojis(str);
+    // IMPORTANTE: '\\' deve ser escapado PRIMEIRO — caso contrário os
+    // escapes seguintes re-introduzem '\\' que seria re-processado.
     return str
+        .replace(/\\/g, '\\textbackslash{}')
         .replace(/&/g, '\\&')
         .replace(/%/g, '\\%')
         .replace(/#/g, '\\#')
@@ -275,7 +278,14 @@ function mdToLatex(md, config = {}) {
         const hMatch = line.match(/^(#{1,4}) (.+)$/);
         if (hMatch) {
             const level = hMatch[1].length;
-            const title = escapeLatexTitle(hMatch[2].replace(/\*\*(.+?)\*\*/g, '$1'));
+            const rawTitle = hMatch[2].replace(/\*\*(.+?)\*\*/g, '$1').trim();
+            // Guard: pula headings com título vazio ou somente barras/espaços
+            // (ex: '## \\' gerado por conversão incorreta de DOCX)
+            if (!rawTitle || /^[\\\s]+$/.test(rawTitle)) {
+                i++;
+                continue;
+            }
+            const title = escapeLatexTitle(rawTitle);
             const cmd = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
             output.push(`\\${cmd}*{${title}}`);
 

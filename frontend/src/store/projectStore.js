@@ -210,7 +210,11 @@ export class ProjectStore {
     }
 
     loadProject(projectData) {
+        const existingId = this._project?.id;
         this._project = structuredClone(projectData);
+        if (!this._project.id && existingId) {
+            this._project.id = existingId;
+        }
 
         // Migração de blocos legados
         if (this._project.blocks) {
