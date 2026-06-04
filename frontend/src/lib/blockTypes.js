@@ -15,21 +15,13 @@ export const BLOCK_TYPES = {
 };
 
 export const BLOCK_TYPE_META = {
-    [BLOCK_TYPES.CONTENT]: {
-        label: 'Texto',
-        icon: '📝',
-        iconClass: 'icon-content',
-        tagClass: 'tag-indigo',
-        color: '#6366f1',
-        default_content: '## Novo Capítulo\n\nEscreva seu conteúdo aqui usando **Markdown**.',
-    },
     [BLOCK_TYPES.CHAPTER]: {
         label: 'Capítulo',
         icon: '📖',
         iconClass: 'icon-chapter',
         tagClass: 'tag-violet',
         color: '#8b5cf6',
-        default_content: '# Título do Capítulo',
+        default_content: '# Título do Capítulo\n\nEscreva seu conteúdo aqui usando **Markdown**.\n\n## Subseção\n\nParágrafo de exemplo.',
     },
     [BLOCK_TYPES.IMAGE]: {
         label: 'Imagem',
@@ -104,7 +96,7 @@ export const BLOCK_CATEGORIES = [
     },
     {
         label: 'Conteúdo',
-        types: [BLOCK_TYPES.CONTENT, BLOCK_TYPES.QUOTE, BLOCK_TYPES.CODE, BLOCK_TYPES.TESTIMONIAL],
+        types: [BLOCK_TYPES.QUOTE, BLOCK_TYPES.CODE, BLOCK_TYPES.TESTIMONIAL],
     },
     {
         label: 'Imagens',

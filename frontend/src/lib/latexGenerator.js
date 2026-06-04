@@ -672,11 +672,9 @@ function blockToLatex(block, mirror = false) {
             tex += `\\thispagestyle{empty}\n\\begingroup\n\\LARGE\n${mdToLatex(content, config)}\n\\endgroup\n${breakCmd}\n`;
             break;
 
+        // CHAPTER e CONTENT (legado) geram o mesmo LaTeX
         case BLOCK_TYPES.CHAPTER:
-            tex += `\\begin{btxbody}\n${mdToLatex(content, config)}\n\\end{btxbody}\n`;
-            break;
-
-        case BLOCK_TYPES.CONTENT:
+        case BLOCK_TYPES.CONTENT: // migração: projetos antigos podem ter blocos 'content'
             if (!toc_visible) tex += `\\begingroup\\let\\addcontentsline\\@gobblethree\n`;
             tex += `\\begin{btxbody}\n${mdToLatex(content, config)}\n\\end{btxbody}\n`;
             if (!toc_visible) tex += `\\endgroup\n`;

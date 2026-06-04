@@ -230,6 +230,9 @@ export class ProjectStore {
                 if (b.type === 'depoimento') b.type = 'testimonial';
                 if (b.type === 'image')       b.type = 'image'; // já correto
 
+                // Unificação: bloco 'content' (Texto) agora é 'chapter'
+                if (b.type === 'content') b.type = 'chapter';
+
                 // image_inline → image (sem página própria)
                 if (b.type === 'image_inline') {
                     b.type = 'image';

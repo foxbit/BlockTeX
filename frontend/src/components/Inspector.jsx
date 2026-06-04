@@ -547,7 +547,7 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                 </div>
             )}
 
-            {block.type === BLOCK_TYPES.CONTENT || block.type === BLOCK_TYPES.CHAPTER ? (
+            {block.type === BLOCK_TYPES.CHAPTER ? (
                 <div className="inspector-section">
                     <div className="inspector-section-title">Captura no Índice</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
