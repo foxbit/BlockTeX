@@ -15,7 +15,10 @@ function sanitizeMarkdown(md) {
         .replace(/&lt;/g, '<')
         .replace(/&amp;/g, '&')
         .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'");
+        .replace(/&apos;/g, "'")
+        // tiptap-markdown renderiza nós desconhecidos como [nodeName];
+        // converte o fallback do pageBreak para o marcador LaTeX correto.
+        .replace(/\[pageBreak\]/g, '\n\n<!-- pagebreak -->\n\n');
 }
 
 const MenuBar = ({ editor }) => {
@@ -191,7 +194,8 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
         ],
         content: block?.content || '',
         onCreate({ editor }) {
-            // Patcha o serializer do tiptap-markdown para suportar o nó pageBreak
+            // Tenta patchar o serializer (funciona em algumas versões do tiptap-markdown).
+            // Fallback garantido pelo replace em sanitizeMarkdown caso não funcione.
             patchMarkdownSerializer(editor);
         },
         onUpdate: ({ editor }) => {
