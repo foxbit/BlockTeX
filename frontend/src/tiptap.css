@@ -214,3 +214,76 @@
     background: none;
     font-size: 0.8rem;
 }
+
+/* ── Page Break Node ─────────────────────────────────────── */
+.tiptap-editor-area .ProseMirror .page-break-node {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0;
+    cursor: default;
+    user-select: none;
+}
+
+.tiptap-editor-area .ProseMirror .page-break-node::before,
+.tiptap-editor-area .ProseMirror .page-break-node::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    border-top: 2px dashed rgba(99, 102, 241, 0.5);
+}
+
+.tiptap-editor-area .ProseMirror .page-break-node::before {
+    content: '';
+}
+
+.tiptap-editor-area .ProseMirror .page-break-node::after {
+    content: '';
+}
+
+/* Label central — via pseudo-element no wrapper não funciona bem;
+   usamos um atributo data no renderHTML ou o próprio elemento vazio.
+   Para exibir o label, usamos a abordagem de outline no nó selecionado. */
+.tiptap-editor-area .ProseMirror div[data-type="page-break"] {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    height: 24px;
+    cursor: default;
+    user-select: none;
+}
+
+.tiptap-editor-area .ProseMirror div[data-type="page-break"]::before {
+    content: '— Quebra de Página —';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: rgba(99, 102, 241, 0.7);
+    background: var(--bg-primary);
+    padding: 0 10px;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    z-index: 1;
+}
+
+.tiptap-editor-area .ProseMirror div[data-type="page-break"]::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 2px dashed rgba(99, 102, 241, 0.4);
+}
+
+/* Selecionado */
+.tiptap-editor-area .ProseMirror.ProseMirror-focused div[data-type="page-break"].ProseMirror-selectednode::before {
+    color: rgba(99, 102, 241, 1);
+}
+
+.tiptap-editor-area .ProseMirror.ProseMirror-focused div[data-type="page-break"].ProseMirror-selectednode::after {
+    border-color: rgba(99, 102, 241, 0.8);
+}

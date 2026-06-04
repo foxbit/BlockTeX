@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
+import { PageBreak, patchMarkdownSerializer, loadContentWithPageBreaks } from '../lib/PageBreakExtension.js';
 
 // Sanitiza a saída Markdown do TipTap, removendo entidades HTML
 // que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
@@ -132,6 +133,21 @@ const MenuBar = ({ editor }) => {
                 </button>
             </div>
 
+            <div className="toolbar-sep" />
+
+            {/* ── Quebra de Página ── */}
+            <div className="toolbar-group">
+                <button
+                    onClick={() => editor.chain().focus().setPageBreak().run()}
+                    className="toolbar-btn"
+                    title="Inserir Quebra de Página (⌘+Enter)"
+                    style={{ fontSize: '10px', gap: '3px', display: 'flex', alignItems: 'center' }}
+                >
+                    <span style={{ fontSize: '13px' }}>⏎</span>
+                    <span>Pág</span>
+                </button>
+            </div>
+
             <div style={{ flex: 1 }} />
 
             <div className="toolbar-group">
@@ -171,8 +187,13 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
                 html: false,
                 transformPastedText: true,
             }),
+            PageBreak,
         ],
         content: block?.content || '',
+        onCreate({ editor }) {
+            // Patcha o serializer do tiptap-markdown para suportar o nó pageBreak
+            patchMarkdownSerializer(editor);
+        },
         onUpdate: ({ editor }) => {
             const markdownOutput = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
             setContent(markdownOutput);
@@ -185,7 +206,7 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
         if (editor && block && open) {
             const currentMarkdown = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
             if (block.content !== currentMarkdown) {
-                editor.commands.setContent(block.content || '');
+                loadContentWithPageBreaks(editor, block.content || '');
             }
         }
     }, [block?.id, open]);
