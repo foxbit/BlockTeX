@@ -1,21 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Markdown } from 'tiptap-markdown';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
-
-// Sanitiza a saída Markdown do TipTap, removendo entidades HTML
-// que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
-// Isso mantém o conteúdo armazenado como Markdown puro.
-function sanitizeMarkdown(md) {
-    return md
-        .replace(/&gt;/g, '>')
-        .replace(/&lt;/g, '<')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'");
-}
 
 const MenuBar = ({ editor }) => {
     if (!editor) return null;
@@ -167,15 +154,12 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
             }),
-            Markdown.configure({
-                html: false,
-                transformPastedText: true,
-            }),
         ],
         content: block?.content || '',
         onUpdate: ({ editor }) => {
-            const markdownOutput = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
-            setContent(markdownOutput);
+            // Store as HTML to preserve text-align and other formatting
+            // that tiptap-markdown would otherwise discard.
+            setContent(editor.getHTML());
             setHasUnsavedChanges(true);
         },
     });
@@ -183,8 +167,9 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
     // Re-inject content when switching blocks if the editor instance survived
     useEffect(() => {
         if (editor && block && open) {
-            const currentMarkdown = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
-            if (block.content !== currentMarkdown) {
+            // Compare stored content (HTML or legacy Markdown) with current HTML
+            const currentHTML = editor.getHTML();
+            if (block.content !== currentHTML) {
                 editor.commands.setContent(block.content || '');
             }
         }

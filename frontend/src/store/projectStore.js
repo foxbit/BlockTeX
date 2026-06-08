@@ -1,6 +1,187 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BLOCK_TYPES, BLOCK_TYPE_META } from '../lib/blockTypes.js';
 
+
+// ============================================================
+// Conversor Markdown -> HTML leve para migração de dados
+// ============================================================
+function markdownToHtml(md) {
+    if (!md) return '';
+    
+    // Se já parecer HTML, não converte
+    const trimmed = md.trimStart();
+    if (trimmed.startsWith('<')) return md;
+
+    // Normaliza quebras de linha e escapes legados de quebra de linha
+    let text = md.replace(/\\\s*$/gm, '<br>')
+                 .replace(/\\\\\s*$/gm, '<br>');
+
+    const lines = text.split('\n');
+    const blocks = [];
+    let inList = false;
+    let listType = null; // 'ul' | 'ol'
+    let inCode = false;
+    let codeContent = [];
+    let codeLang = '';
+    let inQuote = false;
+    let quoteContent = [];
+
+    const closeList = () => {
+        if (inList) {
+            blocks.push(`</${listType}>`);
+            inList = false;
+            listType = null;
+        }
+    };
+
+    const closeCode = () => {
+        if (inCode) {
+            const escapedCode = codeContent.join('\n')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            const langAttr = codeLang ? ` class="language-${codeLang}"` : '';
+            blocks.push(`<pre><code${langAttr}>${escapedCode}</code></pre>`);
+            inCode = false;
+            codeContent = [];
+            codeLang = '';
+        }
+    };
+
+    const closeQuote = () => {
+        if (inQuote) {
+            const innerHtml = quoteContent.map(line => `<p>${inlineMarkdownToHtml(line)}</p>`).join('');
+            blocks.push(`<blockquote>${innerHtml}</blockquote>`);
+            inQuote = false;
+            quoteContent = [];
+        }
+    };
+
+    const inlineMarkdownToHtml = (str) => {
+        let t = str;
+        // Negrito + Itálico (***)
+        t = t.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        // Negrito (**)
+        t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        t = t.replace(/__(.+?)__/g, '<strong>$1</strong>');
+        // Itálico (*)
+        t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        t = t.replace(/_([^_]+)_/g, '<em>$1</em>');
+        // Código inline (`)
+        t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Links [text](url)
+        t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        return t;
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Bloco de código
+        if (line.trim().startsWith('```')) {
+            if (inCode) {
+                closeCode();
+            } else {
+                closeList();
+                closeQuote();
+                inCode = true;
+                codeLang = line.trim().slice(3).trim();
+            }
+            continue;
+        }
+        if (inCode) {
+            codeContent.push(line);
+            continue;
+        }
+
+        // Citações (blockquote)
+        const quoteMatch = line.match(/^>\s?(.*)/);
+        if (quoteMatch) {
+            closeList();
+            closeCode();
+            inQuote = true;
+            quoteContent.push(quoteMatch[1]);
+            continue;
+        } else if (inQuote && line.trim() !== '') {
+            quoteContent.push(line);
+            continue;
+        } else if (inQuote && line.trim() === '') {
+            closeQuote();
+            continue;
+        }
+
+        // Separador (hr)
+        if (line.match(/^[-*_]{3,}$/)) {
+            closeList();
+            closeCode();
+            closeQuote();
+            blocks.push('<hr>');
+            continue;
+        }
+
+        // Headings
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        if (headingMatch) {
+            closeList();
+            closeCode();
+            closeQuote();
+            const level = headingMatch[1].length;
+            const content = inlineMarkdownToHtml(headingMatch[2].trim());
+            blocks.push(`<h${level}>${content}</h${level}>`);
+            continue;
+        }
+
+        // Listas
+        const ulMatch = line.match(/^[-*+]\s+(.+)$/);
+        const olMatch = line.match(/^(\d+)\.\s+(.+)$/);
+
+        if (ulMatch) {
+            if (!inList || listType !== 'ul') {
+                closeList();
+                closeCode();
+                closeQuote();
+                inList = true;
+                listType = 'ul';
+                blocks.push('<ul>');
+            }
+            blocks.push(`<li>${inlineMarkdownToHtml(ulMatch[1].trim())}</li>`);
+            continue;
+        }
+
+        if (olMatch) {
+            if (!inList || listType !== 'ol') {
+                closeList();
+                closeCode();
+                closeQuote();
+                inList = true;
+                listType = 'ol';
+                blocks.push('<ol>');
+            }
+            blocks.push(`<li>${inlineMarkdownToHtml(olMatch[2].trim())}</li>`);
+            continue;
+        }
+
+        // Linha em branco
+        if (line.trim() === '') {
+            closeList();
+            closeQuote();
+            continue;
+        }
+
+        // Parágrafo normal
+        closeList();
+        closeCode();
+        closeQuote();
+        blocks.push(`<p>${inlineMarkdownToHtml(line.trim())}</p>`);
+    }
+
+    closeList();
+    closeCode();
+    closeQuote();
+
+    return blocks.join('');
+}
+
 // ============================================================
 // Default project structure
 // ============================================================
@@ -42,6 +223,16 @@ export const DEFAULT_PROJECT = {
 // ============================================================
 export function createBlock(type) {
     const meta = BLOCK_TYPE_META[type];
+
+    // Define quebra padrão
+    let defaultPageBreak = 'none';
+    if (type === BLOCK_TYPES.CHAPTER || 
+        type === BLOCK_TYPES.CONTENT || 
+        type === BLOCK_TYPES.TOC || 
+        type === BLOCK_TYPES.TESTIMONIAL) {
+        defaultPageBreak = 'before';
+    }
+
     return {
         id: uuidv4(),
         type,
@@ -55,7 +246,8 @@ export function createBlock(type) {
         config: {
             toc_headers: { h1: true, h2: true, h3: false },
             toc_visible: true,
-            page_break: 'none', // 'none' | 'before' | 'isolated'
+            page_break: defaultPageBreak, // 'none' | 'before' | 'isolated'
+            valign: 'top', // 'top' | 'middle' | 'bottom'
         },
         collapsed: false,
     };
@@ -223,12 +415,17 @@ export class ProjectStore {
             this._project.id = existingId;
         }
 
-        // Migração de blocos legados
+        // Migração de blocos legados e conversão Markdown -> HTML nativo
         if (this._project.blocks) {
             this._project.blocks.forEach(b => {
+                // Converte conteúdo legado Markdown para HTML nativo
+                if (b.content && typeof b.content === 'string') {
+                    b.content = markdownToHtml(b.content);
+                }
+
                 // Nomenclatura antiga
                 if (b.type === 'depoimento') b.type = 'testimonial';
-                if (b.type === 'image')       b.type = 'image'; // já correto
+                if (b.type === 'image')       b.type = 'image';
 
                 // Unificação: bloco 'content' (Texto) agora é 'chapter'
                 if (b.type === 'content') b.type = 'chapter';

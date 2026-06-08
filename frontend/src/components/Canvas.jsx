@@ -10,7 +10,12 @@ function getReadingTime(text) {
 
 function getWordCount(text) {
     if (!text.trim()) return 0;
-    return text.trim().split(/\s+/).length;
+    const plain = text
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&[a-z0-9#]+;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return plain ? plain.split(/\s+/).length : 0;
 }
 
 // ─── Single Block Card ───────────────────────────────────────
@@ -57,7 +62,11 @@ export function BlockCard({
 
     const getContentPreview = () => {
         const text = block.content || '';
-        const preview = text.replace(/^#+ /gm, '').replace(/[*_`]/g, '').replace(/\n/g, ' ');
+        const preview = text
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"')
+            .replace(/\s+/g, ' ').trim();
         return preview.substring(0, 80) + (preview.length > 80 ? '…' : '');
     };
 

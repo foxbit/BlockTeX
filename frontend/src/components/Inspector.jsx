@@ -469,6 +469,24 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
 
             <div className="divider" />
 
+            <div className="inspector-section">
+                <div className="inspector-section-title">Alinhamento Vertical</div>
+                <div className="form-group">
+                    <label className="form-label">Alinhamento do Conteúdo</label>
+                    <select
+                        className="form-select"
+                        value={config.valign || 'top'}
+                        onChange={e => onUpdateConfig({ valign: e.target.value })}
+                    >
+                        <option value="top">Topo (padrão)</option>
+                        <option value="middle">Meio (centralizado)</option>
+                        <option value="bottom">Base (alinhado ao rodapé)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="divider" />
+
             {/* Type-specific options */}
 
             {block.type === BLOCK_TYPES.TOC && (

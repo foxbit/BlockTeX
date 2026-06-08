@@ -51,316 +51,195 @@ function escapeLatexTitle(str) {
         .replace(/>/g, '\\textgreater{}');
 }
 
-// ============================================================
-// Converte tabela Markdown GFM para LaTeX
-// ============================================================
-function tableToLatex(tableText) {
-    const lines = tableText.trim().split('\n').filter(l => l.trim());
-    if (lines.length < 2) return tableText;
-
-    // Parseia as células da linha (remove pipes externos)
-    const parseCells = (line) =>
-        line.replace(/^\|/, '').replace(/\|$/, '')
-            .split('|')
-            .map(c => c.trim());
-
-    const headers = parseCells(lines[0]);
-    const sep = lines[1]; // linha com ---
-    const rows = lines.slice(2).map(parseCells);
-
-    // Detecta alinhamento
-    const aligns = parseCells(sep).map(c => {
-        if (c.startsWith(':') && c.endsWith(':')) return 'c';
-        if (c.endsWith(':')) return 'r';
-        return 'l';
-    });
-
-    const colSpec = aligns.join('|');
-    const headerRow = headers.map(h => inlineToLatex(h)).join(' & ');
-    const bodyRows = rows.map(r =>
-        r.map((c, i) => inlineToLatex(c || '')).join(' & ')
-    ).join(' \\\\\ \n');
-
-    return [
-        `\\begin{table}[H]`,
-        `  \\centering`,
-        `  \\begin{tabular}{|${colSpec}|}`,
-        `    \\hline`,
-        `    ${headerRow} \\\\`,
-        `    \\hline`,
-        bodyRows ? `    ${bodyRows} \\\\` : '',
-        `    \\hline`,
-        `  \\end{tabular}`,
-        `\\end{table}`,
-    ].filter(Boolean).join('\n');
-}
 
 // ============================================================
-// Converte inline markdown (bold, italic, code, math, links)
+// Converte inline HTML (saída do TipTap) para LaTeX
 // ============================================================
-function inlineToLatex(text) {
-    let t = stripEmojis(text);
+function inlineHtmlToLatex(html) {
+    if (!html) return '';
+    let t = stripEmojis(html);
 
-    // Protege math inline $...$ antes de escapar
-    const mathPlaceholders = [];
-    t = t.replace(/\$\$([\s\S]+?)\$\$/g, (_, m) => {
-        mathPlaceholders.push(`\\[${m}\\]`);
-        return `\x00MATH${mathPlaceholders.length - 1}\x00`;
-    });
-    t = t.replace(/(?<!\\)\$([^\$\n]+?)\$(?!\$)/g, (_, m) => {
-        mathPlaceholders.push(`$${m}$`);
-        return `\x00MATH${mathPlaceholders.length - 1}\x00`;
-    });
+    // Entidades HTML
+    t = t.replace(/&amp;/g, '&')
+         .replace(/&lt;/g, '<')
+         .replace(/&gt;/g, '>')
+         .replace(/&quot;/g, '"')
+         .replace(/&apos;/g, "'")
+         .replace(/&#39;/g, "'")
+         .replace(/&nbsp;/g, ' ');
 
-    // Protege código inline `...`
-    const codePlaceholders = [];
-    t = t.replace(/`([^`]+)`/g, (_, c) => {
-        codePlaceholders.push(`\\texttt{${c.replace(/[{}]/g, '\\$&')}}`);
-        return `\x00CODE${codePlaceholders.length - 1}\x00`;
-    });
+    // Inline tags → LaTeX (processar antes de escapar)
+    // Protege conteúdo de tags para não escapar os comandos LaTeX
+    const placeholders = [];
+    const protect = (latex) => {
+        placeholders.push(latex);
+        return `\x00PH${placeholders.length - 1}\x00`;
+    };
 
-    // Underline: o TipTap serializa <u> como HTML inline (Markdown não tem underline).
-    // Converte para \underline{} do LaTeX antes de qualquer escape.
-    t = t.replace(/<u>(.+?)<\/u>/g, (_, x) => `\\underline{${x}}`);
+    // <br> (process at the start to ensure it is protected even inside other tags)
+    t = t.replace(/<br\s*\/?>/gi, () => protect('\\\\'));
 
-    // [LEGACY] Protege entidades HTML remanescentes de projetos antigos.
-    // Novos conteúdos já são sanitizados na saída do TipTap (sanitizeMarkdown),
-    // mas projetos .btx salvos anteriormente podem conter &gt; etc.
-    const entityPlaceholders = [];
-    t = t.replace(/&(amp|lt|gt|quot|apos);/g, (match) => {
-        const map = {
-            '&amp;':  '\\&',
-            '&lt;':   '\\textless{}',
-            '&gt;':   '\\textgreater{}',
-            '&quot;': '"',
-            '&apos;': "'",
-        };
-        entityPlaceholders.push(map[match] || match);
-        return `\x00ENTITY${entityPlaceholders.length - 1}\x00`;
-    });
+    // <code>
+    t = t.replace(/<code>([\s\S]*?)<\/code>/g, (_, c) =>
+        protect(`\\texttt{${escapeLatex(c)}}`));
+    // <strong> / <b>
+    t = t.replace(/<strong>([\s\S]*?)<\/strong>/g, (_, x) => protect(`\\textbf{${x}}`));
+    t = t.replace(/<b>([\s\S]*?)<\/b>/g, (_, x) => protect(`\\textbf{${x}}`));
+    // <em> / <i>
+    t = t.replace(/<em>([\s\S]*?)<\/em>/g, (_, x) => protect(`\\textit{${x}}`));
+    t = t.replace(/<i>([\s\S]*?)<\/i>/g, (_, x) => protect(`\\textit{${x}}`));
+    // <u>
+    t = t.replace(/<u>([\s\S]*?)<\/u>/g, (_, x) => protect(`\\underline{${x}}`));
+    // <s> / <strike> / <del>
+    t = t.replace(/<(?:s|strike|del)>([\s\S]*?)<\/(?:s|strike|del)>/g, (_, x) =>
+        protect(`\\sout{${x}}`));
+    // <a href="...">
+    t = t.replace(/<a\s+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g, (_, url, label) =>
+        protect(`\\href{${url}}{${label}}`));
 
-    // Escapa caracteres LaTeX no texto normal.
-    // ATENÇÃO: '\' deve ser escapado PRIMEIRO, pois os escapes
-    // seguintes introduzem '\' e não devem ser re-processados.
-    t = t
-        .replace(/\\/g, '\\textbackslash{}')
-        .replace(/&/g, '\\&')
-        .replace(/%(?!\x00)/g, '\\%')
-        .replace(/#/g, '\\#')
-        .replace(/~/g, '\\textasciitilde{}');
+    // Remove any remaining HTML tags
+    t = t.replace(/<[^>]+>/g, '');
 
-    // Bold + Italic combinado (***texto***)
-    t = t.replace(/\*\*\*(.+?)\*\*\*/g, (_, x) => `\\textbf{\\textit{${x}}}`);
-    // Bold (**texto** ou __texto__)
-    t = t.replace(/\*\*(.+?)\*\*/gs, (_, x) => `\\textbf{${x}}`);
-    t = t.replace(/__(.+?)__/gs, (_, x) => `\\textbf{${x}}`);
-    // Italic (*texto* ou _texto_)
-    t = t.replace(/\*(.+?)\*/gs, (_, x) => `\\textit{${x}}`);
-    t = t.replace(/(?<![a-zA-Z0-9])_([^_\n]+?)_(?![a-zA-Z0-9])/g, (_, x) => `\\textit{${x}}`);
+    // Escape LaTeX special chars in plain text
+    t = escapeLatex(t);
 
-    // Links [texto](url)
-    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) =>
-        `\\href{${url}}{${label}}`
-    );
+    // Restore placeholders recursively to handle nested placeholders
+    while (t.includes('\x00PH')) {
+        t = t.replace(/\x00PH(\d+)\x00/g, (_, i) => placeholders[+i]);
+    }
 
-    // Restaura placeholders
-    t = t.replace(/\x00ENTITY(\d+)\x00/g, (_, i) => entityPlaceholders[+i]);
-    t = t.replace(/\x00CODE(\d+)\x00/g, (_, i) => codePlaceholders[+i]);
-    t = t.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathPlaceholders[+i]);
+    t = t.trim();
+    // Remove trailing \\ from the end of the inline block to prevent "! LaTeX Error: There's no line here to end."
+    t = t.replace(/(?:\s*\\\\)+$/, '');
 
     return t;
 }
 
 // ============================================================
-// Converte listas (unordered e ordered) com suporte a sub-listas
+// Converte HTML do TipTap → LaTeX (blocos)
 // ============================================================
-function listToLatex(lines, baseIndent = 0) {
-    const items = [];
-    let i = 0;
-    while (i < lines.length) {
-        const line = lines[i];
-        const indent = line.search(/\S/);
-        if (indent < baseIndent) break;
+function htmlToLatex(html, config = {}) {
+    if (!html) return '';
 
-        const orderedMatch = line.trim().match(/^(\d+)\. (.*)/);
-        const unorderedMatch = line.trim().match(/^[-*+] (.*)/);
+    const output = [];
+    const tocHeaders = config.toc_headers || { h1: true, h2: true, h3: false };
+    const isVisible  = config.toc_visible !== false;
 
-        if (!orderedMatch && !unorderedMatch) { i++; continue; }
+    // Tokenize block elements. TipTap outputs clean, non-nested block HTML.
+    // We match block-level tags one by one.
+    const blockRe = /<(h[1-4]|p|ul|ol|blockquote|pre|hr)([^>]*)>([\s\S]*?)<\/\1>|<hr\s*\/?>/gi;
+    let lastIndex = 0;
+    let match;
 
-        const content = orderedMatch ? orderedMatch[2] : unorderedMatch[1];
-        const subLines = [];
-        let j = i + 1;
-        while (j < lines.length && lines[j].search(/\S/) > indent) {
-            subLines.push(lines[j]);
-            j++;
+    const processListItems = (listHtml, ordered) => {
+        const itemRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+        const items = [];
+        let m;
+        while ((m = itemRe.exec(listHtml)) !== null) {
+            // Strip inner <p> wrapper that TipTap adds
+            const inner = m[1].replace(/^<p[^>]*>([\s\S]*?)<\/p>$/i, '$1').trim();
+            items.push(inlineHtmlToLatex(inner));
         }
-        const sub = subLines.length ? '\n' + listToLatex(subLines, indent + 2) : '';
-        items.push({ content, ordered: !!orderedMatch, sub });
-        i = j;
+        if (items.length === 0) return '';
+        const env = ordered ? 'enumerate' : 'itemize';
+        return `\\begin{${env}}\n${items.map(it => `  \\item ${it}`).join('\n')}\n\\end{${env}}`;
+    };
+
+    while ((match = blockRe.exec(html)) !== null) {
+        lastIndex = blockRe.lastIndex;
+        const tag     = (match[1] || 'hr').toLowerCase();
+        const attrs   = match[2] || '';
+        const inner   = match[3] || '';
+
+        if (tag === 'hr') {
+            output.push('\\medskip\n\\hrule\n\\medskip');
+            continue;
+        }
+
+        // ── Headings ────────────────────────────────────────
+        if (/^h[1-4]$/.test(tag)) {
+            const level = parseInt(tag[1]);
+            const rawTitle = inlineHtmlToLatex(inner).trim();
+            if (!rawTitle || /^[\\s]+$/.test(rawTitle)) continue;
+            
+            const valign = config.valign || 'top';
+            if (level === 1 && (valign === 'middle' || valign === 'bottom')) {
+                // Ao alinhar verticalmente no meio/base da página, não usamos \chapter*
+                // pois ele força quebra de página e margens fixas que quebram o layout do valign.
+                // Em vez disso, desenhamos o título do capítulo inline de forma destacada.
+                output.push(`{\\Huge\\bfseries\\noindent ${rawTitle}\\par}\\vspace{1.5em}`);
+                output.push(`\\markboth{${rawTitle}}{}`);
+                if (isVisible && tocHeaders.h1 !== false) {
+                    output.push(`\\addcontentsline{toc}{chapter}{${rawTitle}}`);
+                }
+            } else {
+                const cmd = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
+                output.push(`\\${cmd}*{${rawTitle}}`);
+                if (level === 1) output.push(`\\markboth{${rawTitle}}{}`);
+                else if (level === 2) output.push(`\\markright{${rawTitle}}`);
+                if (isVisible) {
+                    const capture = (level === 1 && tocHeaders.h1 !== false) ||
+                                    (level === 2 && tocHeaders.h2) ||
+                                    (level === 3 && tocHeaders.h3);
+                    if (capture) {
+                        const tocLevel = ['chapter','section','subsection','subsubsection'][level-1];
+                        output.push(`\\addcontentsline{toc}{${tocLevel}}{${rawTitle}}`);
+                    }
+                }
+            }
+            continue;
+        }
+
+        // ── Paragraph ────────────────────────────────────────
+        if (tag === 'p') {
+            const alignMatch = attrs.match(/text-align:\s*(center|right|left|justify)/);
+            const align = alignMatch ? alignMatch[1] : null;
+            const text = inlineHtmlToLatex(inner);
+
+            if (!text.trim()) { output.push(''); continue; }
+
+            if (align === 'center') {
+                output.push(`{\\centering ${text}\\par}`);
+            } else if (align === 'right') {
+                output.push(`{\\raggedleft ${text}\\par}`);
+            } else if (align === 'justify') {
+                output.push(text);
+            } else {
+                output.push(text);
+            }
+            continue;
+        }
+
+        // ── Lists ────────────────────────────────────────────
+        if (tag === 'ul') { output.push(processListItems(inner, false)); continue; }
+        if (tag === 'ol') { output.push(processListItems(inner, true));  continue; }
+
+        // ── Blockquote ───────────────────────────────────────
+        if (tag === 'blockquote') {
+            const text = inlineHtmlToLatex(inner.replace(/<\/?p[^>]*>/g, ' ').trim());
+            output.push(`\\begin{quote}\n${text}\n\\end{quote}`);
+            continue;
+        }
+
+        // ── Code block ───────────────────────────────────────
+        if (tag === 'pre') {
+            const codeMatch = inner.match(/<code[^>]*>([\s\S]*?)<\/code>/i);
+            const code = codeMatch
+                ? codeMatch[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+                : inner;
+            output.push(`\\begin{lstlisting}\n${code}\n\\end{lstlisting}`);
+            continue;
+        }
     }
 
-    if (items.length === 0) return '';
-    const allOrdered = items.every(it => it.ordered);
-    const env = allOrdered ? 'enumerate' : 'itemize';
-    const body = items.map(it =>
-        `  \\item ${inlineToLatex(it.content)}${it.sub}`
-    ).join('\n');
-    return `\\begin{${env}}\n${body}\n\\end{${env}}`;
+    return output.filter(l => l !== null && l !== undefined).join('\n\n');
 }
 
 // ============================================================
-// Conversor Markdown → LaTeX completo
+// Conversor de conteúdo único (HTML Nativo)
 // ============================================================
-function mdToLatex(md, config = {}) {
-    if (!md) return '';
-    const lines = md.split('\n');
-    const output = [];
-    let i = 0;
-
-    while (i < lines.length) {
-        const line = lines[i];
-
-        // ── Bloco de código (fenced) ─────────────────────────
-        if (line.startsWith('```')) {
-            const lang = line.slice(3).trim() || 'text';
-            const codeLines = [];
-            i++;
-            while (i < lines.length && !lines[i].startsWith('```')) {
-                codeLines.push(lines[i]);
-                i++;
-            }
-            i++; // fecha ```
-            // Map of safe natively supported languages by the listings package
-            const langMap = { 'c++': 'C++', 'cpp': 'C++', 'python': 'Python', 'py': 'Python', 'java': 'Java', 'bash': 'bash', 'sh': 'bash', 'sql': 'SQL', 'html': 'HTML', 'xml': 'XML', 'c': 'C', 'php': 'PHP', 'ruby': 'Ruby' };
-            const latexLang = langMap[lang.toLowerCase()];
-
-            if (latexLang) {
-                output.push(`\\begin{lstlisting}[language=${latexLang}]`);
-            } else {
-                output.push(`\\begin{lstlisting}`);
-            }
-            output.push(...codeLines);
-            output.push(`\\end{lstlisting}`);
-            continue;
-        }
-
-        // ── Tabela GFM ────────────────────────────────────────
-        if (line.includes('|') && i + 1 < lines.length && lines[i + 1].match(/^[\s|:-]+$/)) {
-            const tableLines = [line];
-            i++;
-            while (i < lines.length && lines[i].includes('|')) {
-                tableLines.push(lines[i]);
-                i++;
-            }
-            output.push(tableToLatex(tableLines.join('\n')));
-            continue;
-        }
-
-        // ── Math bloco $$ ... $$ ──────────────────────────────
-        if (line.trim().startsWith('$$')) {
-            const mathLines = [line.trim().slice(2)];
-            if (!line.trim().endsWith('$$') || line.trim() === '$$') {
-                i++;
-                while (i < lines.length && !lines[i].includes('$$')) {
-                    mathLines.push(lines[i]);
-                    i++;
-                }
-                if (i < lines.length) mathLines.push(lines[i].replace('$$', ''));
-            } else {
-                mathLines[0] = mathLines[0].replace(/\$\$$/, '');
-            }
-            i++;
-            output.push(`\\[${mathLines.join('\n')}\\]`);
-            continue;
-        }
-
-        // ── Heading # ─────────────────────────────────────────
-        const hMatch = line.match(/^(#{1,4}) (.+)$/);
-        if (hMatch) {
-            const level = hMatch[1].length;
-            const rawTitle = hMatch[2].replace(/\*\*(.+?)\*\*/g, '$1').trim();
-            // Guard: pula headings com título vazio ou somente barras/espaços
-            // (ex: '## \\' gerado por conversão incorreta de DOCX)
-            if (!rawTitle || /^[\\\s]+$/.test(rawTitle)) {
-                i++;
-                continue;
-            }
-            const title = escapeLatexTitle(rawTitle);
-            const cmd = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
-            output.push(`\\${cmd}*{${title}}`);
-
-            // Atualiza os cabeçalhos (fancyhdr) para refletir este título e sobrescrever o nome 'Sumário'
-            if (level === 1) {
-                output.push(`\\markboth{${title}}{}`);
-            } else if (level === 2) {
-                output.push(`\\markright{${title}}`);
-            }
-
-            const tocHeaders = config.toc_headers || { h1: true, h2: true, h3: false };
-            const isVisible = config.toc_visible !== false;
-
-            // Adiciona ao TOC manualmente, respeitando as marcações de Checkbox
-            if (isVisible) {
-                const shouldCapture = (level === 1 && tocHeaders.h1 !== false) ||
-                    (level === 2 && tocHeaders.h2) ||
-                    (level === 3 && tocHeaders.h3);
-                if (shouldCapture) {
-                    const tocLevel = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
-                    output.push(`\\addcontentsline{toc}{${tocLevel}}{${title}}`);
-                }
-            }
-
-            i++;
-            continue;
-        }
-
-        // ── Blockquote ─────────────────────────────────────────
-        // Suporta tanto '> ' literal quanto '&gt; ' (entidade HTML do editor)
-        if (line.startsWith('> ') || line.startsWith('&gt; ')) {
-            const prefix = line.startsWith('&gt; ') ? '&gt; ' : '> ';
-            const prefixLen = prefix.length;
-            const quoteLines = [];
-            while (i < lines.length && (lines[i].startsWith('> ') || lines[i].startsWith('&gt; '))) {
-                quoteLines.push(lines[i].slice(prefixLen));
-                i++;
-            }
-            output.push(`\\begin{quote}`);
-            output.push(quoteLines.map(inlineToLatex).join(' '));
-            output.push(`\\end{quote}`);
-            continue;
-        }
-
-        // ── Listas ────────────────────────────────────────────
-        if (line.match(/^(\s*)([-*+]|\d+\.) /)) {
-            const listLines = [];
-            while (i < lines.length && (lines[i].match(/^(\s*)([-*+]|\d+\.) /) || (lines[i].trim() === '' && i + 1 < lines.length && lines[i + 1].match(/^\s+([-*+]|\d+\.) /)))) {
-                if (lines[i].trim() !== '') listLines.push(lines[i]);
-                i++;
-            }
-            output.push(listToLatex(listLines));
-            continue;
-        }
-
-        // ── Separador horizontal ─────────────────────────────
-        if (line.match(/^[-*_]{3,}$/)) {
-            output.push('\\medskip\n\\hrule\n\\medskip');
-            i++;
-            continue;
-        }
-
-        // ── Linha vazia ───────────────────────────────────────
-        if (line.trim() === '') {
-            output.push('');
-            i++;
-            continue;
-        }
-
-        // ── Parágrafo normal ─────────────────────────────────
-        output.push(inlineToLatex(line));
-        i++;
-    }
-
-    return output.join('\n');
+function contentToLatex(content, config = {}) {
+    return htmlToLatex(content, config);
 }
 
 // ============================================================
@@ -611,6 +490,7 @@ function generatePreamble(globalSetup, metadata) {
         '',
         '% ─── Misc ───────────────────────────────────────────',
         '\\usepackage{emptypage} % Remove cabeçalhos de páginas em branco vazias',
+        '\\usepackage[normalem]{ulem} % \\sout for strikethrough (normalem keeps \\emph intact)',
         '',
         ...(() => {
             // ── btxbody: environment aplicado SOMENTE em blocos CHAPTER e CONTENT ──
@@ -653,12 +533,38 @@ function generatePreamble(globalSetup, metadata) {
 // ============================================================
 // Generate LaTeX for a single block
 // ============================================================
-function blockToLatex(block, mirror = false) {
+function blockToLatex(block, mirror = false, isFirst = false) {
     const { type, content, config = {}, style_variables = {} } = block;
-    const { page_break, toc_visible = true } = config;
+    let { page_break, toc_visible = true, valign = 'top' } = config;
 
     let tex = '';
     const breakCmd = mirror ? '\\cleardoublepage' : '\\clearpage';
+
+    // Define a quebra padrão para retrocompatibilidade caso 'page_break' não esteja definido
+    if (page_break === undefined || page_break === null) {
+        if (type === BLOCK_TYPES.CHAPTER || 
+            type === BLOCK_TYPES.CONTENT || 
+            type === BLOCK_TYPES.TOC || 
+            type === BLOCK_TYPES.TESTIMONIAL) {
+            page_break = 'before';
+        } else {
+            page_break = 'none';
+        }
+    }
+
+    // Se o alinhamento vertical for 'middle' ou 'bottom', o preenchimento vertical (\fill)
+    // necessita que o bloco esteja em uma página própria para funcionar corretamente.
+    // Portanto, por padrão, definimos a quebra como 'before' a menos que o usuário tenha configurado explicitamente 'none'.
+    if (valign === 'middle' || valign === 'bottom') {
+        if (page_break === undefined || page_break === null) {
+            page_break = 'before';
+        }
+    }
+
+    // Se for o primeiro bloco do documento, não precisamos de quebra antes dele.
+    if (isFirst) {
+        page_break = 'none';
+    }
 
     // Page break: isolated = cleardoublepage (starts on right/odd page)
     if (page_break === 'isolated') {
@@ -667,16 +573,21 @@ function blockToLatex(block, mirror = false) {
         tex += `${breakCmd}\n\n`;
     }
 
+    // Se o alinhamento vertical for 'middle' ou 'bottom', inserimos o preenchimento vertical no topo da página
+    if (valign === 'middle' || valign === 'bottom') {
+        tex += `\\vspace*{\\fill}\n\n`;
+    }
+
     switch (type) {
         case BLOCK_TYPES.COVER:
-            tex += `\\thispagestyle{empty}\n\\begingroup\n\\LARGE\n${mdToLatex(content, config)}\n\\endgroup\n${breakCmd}\n`;
+            tex += `\\thispagestyle{empty}\n\\begingroup\n\\LARGE\n${contentToLatex(content, config)}\n\\endgroup\n${breakCmd}\n`;
             break;
 
         // CHAPTER e CONTENT (legado) geram o mesmo LaTeX
         case BLOCK_TYPES.CHAPTER:
         case BLOCK_TYPES.CONTENT: // migração: projetos antigos podem ter blocos 'content'
-            if (!toc_visible) tex += `\\begingroup\\let\\addcontentsline\\@gobblethree\n`;
-            tex += `\\begin{btxbody}\n${mdToLatex(content, config)}\n\\end{btxbody}\n`;
+            if (!toc_visible) tex += `\\begingroup\\renewcommand{\\addcontentsline}[3]{}\n`;
+            tex += `\\begin{btxbody}\n${contentToLatex(content, config)}\n\\end{btxbody}\n`;
             if (!toc_visible) tex += `\\endgroup\n`;
             break;
 
@@ -684,12 +595,12 @@ function blockToLatex(block, mirror = false) {
             const rawColor = (style_variables.color || '#6366f1').replace('#', '');
             // Garante 6 dígitos hex válidos
             const hexColor = /^[0-9A-Fa-f]{6}$/.test(rawColor) ? rawColor : '6366F1';
-            tex += `{\\color[HTML]{${hexColor}}\n\\begin{quotation}\n${mdToLatex(content, config)}\n\\end{quotation}}\n`;
+            tex += `{\\color[HTML]{${hexColor}}\n\\begin{quotation}\n${contentToLatex(content, config)}\n\\end{quotation}}\n`;
             break;
         }
 
         case BLOCK_TYPES.CODE:
-            tex += mdToLatex(content, config) + '\n';
+            tex += contentToLatex(content, config) + '\n';
             break;
 
         case BLOCK_TYPES.TOC: {
@@ -763,7 +674,7 @@ function blockToLatex(block, mirror = false) {
             }
 
             if (!imgRef && !exclusive) {
-                tex += mdToLatex(content, config) + '\n';
+                tex += contentToLatex(content, config) + '\n';
                 break;
             }
 
@@ -848,7 +759,7 @@ function blockToLatex(block, mirror = false) {
                     tex += `  \\includegraphics[width=\\linewidth]{${imgRef}}\n`;
                     if (caption) tex += `  \\caption{${escapeLatex(caption)}}\n`;
                     tex += `\\end{wrapfigure}\n`;
-                    if (content && !content.match(/^<!--/)) tex += mdToLatex(content, config) + '\n';
+                    if (content && !content.match(/^<!--/)) tex += contentToLatex(content, config) + '\n';
                 } else {
                     tex += `\\begin{figure}[${floatPos}]\n  \\centering\n  \\includegraphics[width=${widthFrac}\\textwidth]{${imgRef}}\n${captionTex}\\end{figure}\n`;
                 }
@@ -982,16 +893,74 @@ function blockToLatex(block, mirror = false) {
 
             tex += `\\end{minipage}\n\n`;
             tex += `\\vspace{1.5em}\n`;
-            tex += mdToLatex(content, config) + '\n';
+            tex += contentToLatex(content, config) + '\n';
             break;
         }
 
         default:
-            tex += mdToLatex(content, config) + '\n';
+            tex += contentToLatex(content, config) + '\n';
+    }
+
+    if (valign === 'middle' || valign === 'bottom') {
+        // Remove quebra de página final temporariamente se o bloco já a gera de forma nativa
+        let hasEndPageBreak = false;
+        let endBreakCmd = '';
+
+        const trimmedTex = tex.trim();
+        if (trimmedTex.endsWith('\\clearpage')) {
+            hasEndPageBreak = true;
+            endBreakCmd = '\\clearpage\n';
+            tex = tex.substring(0, tex.lastIndexOf('\\clearpage'));
+        } else if (trimmedTex.endsWith('\\cleardoublepage')) {
+            hasEndPageBreak = true;
+            endBreakCmd = '\\cleardoublepage\n';
+            tex = tex.substring(0, tex.lastIndexOf('\\cleardoublepage'));
+        } else if (trimmedTex.endsWith('\\newpage')) {
+            hasEndPageBreak = true;
+            endBreakCmd = '\\newpage\n';
+            tex = tex.substring(0, tex.lastIndexOf('\\newpage'));
+        }
+
+        // Se for middle, adicionamos o preenchimento vertical abaixo do conteúdo do bloco
+        if (valign === 'middle') {
+            tex += `\n\\vspace*{\\fill}\n`;
+        }
+
+        // Restaura a quebra de página original ou insere uma nova quebra de página (pois alinhamento vertical isola o bloco na página)
+        if (hasEndPageBreak) {
+            tex += endBreakCmd;
+        } else {
+            tex += `\n${breakCmd}\n`;
+        }
     }
 
     tex += '\n';
     return tex;
+}
+
+// ============================================================
+// Helper to collapse consecutive page breaks (e.g. \clearpage \clearpage)
+// ============================================================
+function collapsePageBreaks(tex) {
+    // Captura sequências de dois ou mais comandos de quebra separados apenas por espaços ou newlines
+    const regex = /\\(clearpage|cleardoublepage|newpage)(?:\s*\\(clearpage|cleardoublepage|newpage))+/g;
+
+    return tex.replace(regex, (match) => {
+        const commands = match.match(/\\(clearpage|cleardoublepage|newpage)/g);
+        if (!commands) return match;
+
+        let hasDouble = false;
+        let hasClear = false;
+
+        for (const cmd of commands) {
+            if (cmd === '\\cleardoublepage') hasDouble = true;
+            else if (cmd === '\\clearpage') hasClear = true;
+        }
+
+        if (hasDouble) return '\n\\cleardoublepage\n';
+        if (hasClear) return '\n\\clearpage\n';
+        return '\n\\newpage\n';
+    });
 }
 
 // ============================================================
@@ -1002,11 +971,14 @@ export function generateTex(projectData) {
 
     let tex = generatePreamble(global_setup, metadata);
 
-    for (const block of blocks) {
-        tex += blockToLatex(block, global_setup.mirror);
+    for (let i = 0; i < blocks.length; i++) {
+        tex += blockToLatex(blocks[i], global_setup.mirror, i === 0);
     }
 
     tex += '\n\\end{document}\n';
+
+    // Remove quebras de página consecutivas e redundantes
+    tex = collapsePageBreaks(tex);
 
     return tex;
 }
@@ -1018,7 +990,7 @@ export function generateHtmlPreview(blocks) {
     let html = '';
 
     for (const block of blocks) {
-        const { type, content, config = {} } = block;
+        const { type, content } = block;
         if (!content) continue;
 
         let blockHtml = '';
@@ -1031,7 +1003,7 @@ export function generateHtmlPreview(blocks) {
                 blockHtml = '<hr style="border:none;border-top:1px solid #ccc;margin:24px 0">';
                 break;
             default:
-                blockHtml = markdownToHtml(content);
+                blockHtml = content; // Já é HTML nativo puro!
         }
 
         html += blockHtml;
@@ -1040,28 +1012,4 @@ export function generateHtmlPreview(blocks) {
     return html;
 }
 
-function markdownToHtml(md) {
-    if (!md || md.startsWith('<!--')) {
-        return `<p style="color:#aaa;font-style:italic">(Elemento de mídia)</p>`;
-    }
-
-    let html = md;
-    // Code blocks
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/gm, (_, lang, code) => `<pre><code class="language-${lang}">${code}</code></pre>`);
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-    html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-    html = html.replace(/^---+$/gm, '<hr>');
-    html = html.replace(/\n{2,}/g, '</p><p>');
-    html = `<p>${html}</p>`;
-    return html;
-}
-
-export { mdToLatex, escapeLatex };
+export { escapeLatex };

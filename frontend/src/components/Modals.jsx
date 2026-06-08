@@ -266,3 +266,34 @@ export function ExportTexModal({ texContent, onClose }) {
         </div>
     );
 }
+
+export function ConfirmDeleteModal({ onConfirm, onCancel, blockTitle }) {
+    return (
+        <div className="modal-overlay">
+            <div className="modal" style={{ maxWidth: '400px' }}>
+                <div className="modal-header">
+                    <div style={{
+                        width: '40px', height: '40px', flexShrink: 0,
+                        background: 'rgba(244, 63, 94, 0.12)',
+                        color: 'var(--accent-rose)',
+                        borderRadius: 'var(--radius-md)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
+                    }}>⚠️</div>
+                    <h2 className="modal-title">Excluir Bloco</h2>
+                    <button type="button" className="btn btn-ghost btn-icon" onClick={onCancel}>✕</button>
+                </div>
+                <div className="modal-body" style={{ minHeight: 'auto', paddingBottom: '20px' }}>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                        Tem certeza de que deseja excluir o <strong>{blockTitle}</strong>? Esta ação não pode ser desfeita.
+                    </p>
+                </div>
+                <div className="modal-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
+                    <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
+                    <button type="button" className="btn btn-danger" onClick={onConfirm}>
+                        Excluir Bloco
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}

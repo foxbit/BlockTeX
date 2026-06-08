@@ -21,7 +21,7 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-chapter',
         tagClass: 'tag-violet',
         color: '#8b5cf6',
-        default_content: '# Título do Capítulo\n\nEscreva seu conteúdo aqui usando **Markdown**.\n\n## Subseção\n\nParágrafo de exemplo.',
+        default_content: '<h1>Título do Capítulo</h1><p>Escreva seu conteúdo aqui.</p><h2>Subseção</h2><p>Parágrafo de exemplo.</p>',
     },
     [BLOCK_TYPES.IMAGE]: {
         label: 'Imagem',
@@ -45,7 +45,7 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-quote',
         tagClass: 'tag-amber',
         color: '#f59e0b',
-        default_content: '> "Esta é uma citação inspiradora que o leitor irá lembrar."\n\n— Autor Desconhecido',
+        default_content: '<blockquote><p>"Esta é uma citação inspiradora que o leitor irá lembrar."</p></blockquote><p>— Autor Desconhecido</p>',
     },
     [BLOCK_TYPES.CODE]: {
         label: 'Código',
@@ -53,7 +53,7 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-code',
         tagClass: 'tag-green',
         color: '#10b981',
-        default_content: '```python\ndef hello_world():\n    print("Hello, World!")\n```',
+        default_content: '<pre><code class="language-python">def hello_world():\n    print("Hello, World!")</code></pre>',
     },
     [BLOCK_TYPES.TOC]: {
         label: 'Índice',
@@ -61,7 +61,7 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-toc',
         tagClass: 'tag-rose',
         color: '#f43f5e',
-        default_content: '<!-- TOC: Índice Automático -->\nSerá gerado automaticamente pelo LaTeX.',
+        default_content: '<!-- TOC: Índice Automático --><p>Será gerado automaticamente pelo LaTeX.</p>',
     },
     [BLOCK_TYPES.SEPARATOR]: {
         label: 'Separador',
@@ -69,7 +69,7 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-separator',
         tagClass: 'tag-violet',
         color: '#8b5cf6',
-        default_content: '---',
+        default_content: '<hr>',
     },
     [BLOCK_TYPES.COVER]: {
         label: 'Capa',
@@ -77,7 +77,7 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-cover',
         tagClass: 'tag-indigo',
         color: '#6366f1',
-        default_content: '# Título do Livro\n\n**Subtítulo opcional**\n\n_Autor_',
+        default_content: '<h1>Título do Livro</h1><p><strong>Subtítulo opcional</strong></p><p><em>Autor</em></p>',
     },
     [BLOCK_TYPES.TESTIMONIAL]: {
         label: 'Depoimento',
@@ -85,7 +85,7 @@ export const BLOCK_TYPE_META = {
         iconClass: 'icon-depoimento',
         tagClass: 'tag-orange',
         color: '#f97316',
-        default_content: 'Meu nome é Maria Antônia Soares Seguins, popularmente conhecida como Maria Seguins... [adicione o texto aqui]',
+        default_content: '<p>Meu nome é Maria Antônia Soares Seguins, popularmente conhecida como Maria Seguins... [adicione o texto aqui]</p>',
     },
 };
 

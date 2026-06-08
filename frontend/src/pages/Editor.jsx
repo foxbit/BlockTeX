@@ -5,12 +5,12 @@ import { Canvas } from '../components/Canvas.jsx';
 import { Inspector } from '../components/Inspector.jsx';
 import { LogConsole } from '../components/LogConsole.jsx';
 import { PreviewPanel } from '../components/PreviewPanel.jsx';
-import { ExportTexModal } from '../components/Modals.jsx';
+import { ExportTexModal, ConfirmDeleteModal } from '../components/Modals.jsx';
 import { ProjectStore, DEFAULT_PROJECT } from '../store/projectStore.js';
 import { generateTex } from '../lib/latexGenerator.js';
 import { useBackend } from '../hooks/useBackend.js';
 import { TipTapDrawer } from '../components/TipTapDrawer.jsx';
-import { BLOCK_TYPES } from '../lib/blockTypes.js';
+import { BLOCK_TYPES, BLOCK_TYPE_META } from '../lib/blockTypes.js';
 import { ThemeSelector } from '../components/ThemeSelector.jsx';
 
 // ── Gear icon SVG ──────────────────────────────────────────────
@@ -48,6 +48,7 @@ export default function Editor() {
   const [modal, setModal] = useState(null); // 'new' | 'save' | 'tex' | null
   const [editingBlockId, setEditingBlockId] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [deleteBlockConfirm, setDeleteBlockConfirm] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [inspectorTab, setInspectorTab] = useState('block');
@@ -291,6 +292,24 @@ export default function Editor() {
         />
       )}
 
+      {deleteBlockConfirm && (() => {
+        const block = project.blocks.find(b => b.id === deleteBlockConfirm);
+        const blockIndex = project.blocks.findIndex(b => b.id === deleteBlockConfirm) + 1;
+        const blockTypeLabel = block ? (BLOCK_TYPE_META[block.type]?.label || block.type) : 'Bloco';
+        const blockTitle = block ? `Bloco #${blockIndex} (${blockTypeLabel})` : 'Bloco';
+        return (
+          <ConfirmDeleteModal
+            blockTitle={blockTitle}
+            onConfirm={() => {
+              store.removeBlock(deleteBlockConfirm);
+              if (selectedBlockId === deleteBlockConfirm) setSelectedBlockId(null);
+              setDeleteBlockConfirm(null);
+            }}
+            onCancel={() => setDeleteBlockConfirm(null)}
+          />
+        );
+      })()}
+
       {/* Topbar */}
       <header className="topbar">
         {/* Logo */}
@@ -407,8 +426,7 @@ export default function Editor() {
             onSelect={setSelectedBlockId}
             onEditContent={(id) => setEditingBlockId(id)}
             onDelete={(id) => {
-              store.removeBlock(id);
-              if (selectedBlockId === id) setSelectedBlockId(null);
+              setDeleteBlockConfirm(id);
             }}
             onDuplicate={(id) => {
               const newId = store.duplicateBlock(id);
