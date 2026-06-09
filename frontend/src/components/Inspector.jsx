@@ -388,22 +388,40 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         : 'Desativada — espaçamento pode ficar irregular.'}
                 </p>
 
-                {/* Viúvos e Órfãos */}
-                <div className="form-group">
-                    <label className="form-label">Viúvos & Órfãos</label>
-                    <select
-                        className="form-select"
-                        value={global_setup.orphanWidow || 'moderate'}
-                        onChange={e => onUpdateSetup({ orphanWidow: e.target.value })}
-                    >
-                        <option value="light">Leve — permite viúvos/órfãos</option>
-                        <option value="moderate">Moderado — evita quando possível</option>
-                        <option value="strict">Estrito — proíbe completamente</option>
-                    </select>
-                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>
-                        Viúvo: última linha de ¶ no topo da página. Órfão: primeira linha no rodapé.
-                    </p>
+                {/* Linhas Mínimas de Viúvas & Órfãs */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                        <label className="form-label">Mín. Linhas Órfãs</label>
+                        <select
+                            className="form-select"
+                            value={global_setup.minOrphans !== undefined ? global_setup.minOrphans : 2}
+                            onChange={e => onUpdateSetup({ minOrphans: parseInt(e.target.value) })}
+                        >
+                            <option value="1">1 (Permitir)</option>
+                            <option value="2">2 (Padrão)</option>
+                            <option value="3">3 linhas</option>
+                            <option value="4">4 linhas</option>
+                            <option value="5">5 linhas</option>
+                        </select>
+                    </div>
+                    <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                        <label className="form-label">Mín. Linhas Viúvas</label>
+                        <select
+                            className="form-select"
+                            value={global_setup.minWidows !== undefined ? global_setup.minWidows : 2}
+                            onChange={e => onUpdateSetup({ minWidows: parseInt(e.target.value) })}
+                        >
+                            <option value="1">1 (Permitir)</option>
+                            <option value="2">2 (Padrão)</option>
+                            <option value="3">3 linhas</option>
+                            <option value="4">4 linhas</option>
+                            <option value="5">5 linhas</option>
+                        </select>
+                    </div>
                 </div>
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.4 }}>
+                    Órfãs: linhas mínimas mantidas no rodapé da página. Viúvas: linhas mínimas mantidas no topo da página seguinte.
+                </p>
             </div>
         </div>
     );

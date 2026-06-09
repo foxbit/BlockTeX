@@ -340,6 +340,8 @@ function generatePreamble(globalSetup, metadata) {
         bodyJustify   = 'justified',
         hyphenation   = true,
         orphanWidow   = 'moderate',
+        minOrphans    = 2,
+        minWidows     = 2,
     } = globalSetup;
 
     // Resolve tema visual
@@ -515,14 +517,35 @@ function generatePreamble(globalSetup, metadata) {
         '',
         ...(() => {
             // ── btxbody: environment aplicado SOMENTE em blocos CHAPTER e CONTENT ──
-            const penaltyMap = { light: 500, moderate: 1000, strict: 10000 };
-            const penalty = penaltyMap[orphanWidow] || 1000;
             const linespread = bodyLinespread || themeConfig.linespread;
             const justifyCmd = {
                 raggedright: '  \\raggedright%',
                 raggedleft:  '  \\raggedleft%',
                 centering:   '  \\centering%',
             }[bodyJustify] || '';
+
+            // Resolve retrocompatibilidade e calcula as penalidades de viúvas/órfãs
+            let resolvedMinOrphans = minOrphans;
+            let resolvedMinWidows = minWidows;
+
+            if (resolvedMinOrphans === undefined || resolvedMinOrphans === null) {
+                resolvedMinOrphans = orphanWidow === 'light' ? 1 : 2;
+            }
+            if (resolvedMinWidows === undefined || resolvedMinWidows === null) {
+                resolvedMinWidows = orphanWidow === 'light' ? 1 : 2;
+            }
+
+            const makePenalties = (N) => {
+                const val = parseInt(N) || 2;
+                if (val <= 1) return '1 0';
+                const list = Array(val - 1).fill(10000);
+                list.push(0);
+                return `${val} ${list.join(' ')}`;
+            };
+
+            const widowPens = makePenalties(resolvedMinWidows);
+            const orphanPens = makePenalties(resolvedMinOrphans);
+
             return [
                 '% ─── Body content environment (CHAPTER + CONTENT only) ──',
                 '\\newenvironment{btxbody}{%',
@@ -531,8 +554,8 @@ function generatePreamble(globalSetup, metadata) {
                 linespread ? `  \\linespread{${linespread}}\\selectfont%` : '',
                 justifyCmd,
                 !hyphenation ? '  \\hyphenpenalty=10000\\exhyphenpenalty=10000%' : '',
-                `  \\widowpenalty=${penalty}%`,
-                `  \\clubpenalty=${penalty}%`,
+                `  \\widowpenalties=${widowPens}%`,
+                `  \\clubpenalties=${orphanPens}%`,
                 '}{}',
                 '',
             ].filter(l => l !== '');

@@ -214,6 +214,8 @@ export const DEFAULT_PROJECT = {
         bodyJustify:    'justified', // 'justified' | 'raggedright' | 'raggedleft' | 'centering'
         hyphenation:    true,        // false = desativa hifenização
         orphanWidow:    'moderate',  // 'light'(500) | 'moderate'(1000) | 'strict'(10000)
+        minOrphans:     2,           // quantidade mínima de linhas no rodapé (órfãs)
+        minWidows:      2,           // quantidade mínima de linhas no topo da página seguinte (viúvas)
     },
     blocks: [],
 };
