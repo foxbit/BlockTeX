@@ -481,6 +481,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\usepackage{wrapfig}',
         '\\usepackage{float}',
         '\\usepackage{tikz}',
+        '\\usepackage{caption} % Suporte para legendas sem prefixo Figura X e customizações',
         '\\graphicspath{{./assets/}}',
         '',
         '% Cover-image macro (like CSS object-fit: cover)',
@@ -648,6 +649,16 @@ function blockToLatex(block, mirror = false, isFirst = false) {
         type === BLOCK_TYPES.TESTIMONIAL) {
         if (!page_break || page_break === 'none') {
             page_break = 'before';
+        }
+    }
+
+    // Para blocos de imagem/grade de imagem, se hide_header ou hide_footer estiver ativo,
+    // forçamos page_break='before' para garantir que \thispagestyle se aplique à página correta.
+    if (type === BLOCK_TYPES.IMAGE || type === BLOCK_TYPES.IMAGE_GRID) {
+        if (hide_header || hide_footer) {
+            if (!page_break || page_break === 'none') {
+                page_break = 'before';
+            }
         }
     }
 
@@ -878,7 +889,9 @@ function blockToLatex(block, mirror = false, isFirst = false) {
 
             } else {
                 // ── Inline mode (flows with text) ────────────────────────────
-                const captionTex = caption ? `  \\caption{${capSizeCmd} ${escapeLatex(caption)}}\n` : '';
+                // Nota: hide_header/hide_footer é tratado pelo handler geral no topo de blockToLatex
+                // que força page_break='before' e aplica \thispagestyle antes do conteúdo do bloco.
+                const captionTex = caption ? `  \\caption*{${capSizeCmd} ${escapeLatex(caption)}}\n` : '';
                 if (layout === 'full') {
                     tex += `\\begin{figure}[${floatPos}]\n  \\centering\n  \\includegraphics[width=\\textwidth]{${imgRef}}\n${captionTex}\\end{figure}\n`;
                 } else if (layout === 'left' || layout === 'right') {
@@ -887,7 +900,7 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                     tex += `\\begin{wrapfigure}{${wrapSide}}{${wrapWidth}}\n`;
                     tex += `  \\centering\n`;
                     tex += `  \\includegraphics[width=\\linewidth]{${imgRef}}\n`;
-                    if (caption) tex += `  \\caption{${capSizeCmd} ${escapeLatex(caption)}}\n`;
+                    if (caption) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(caption)}}\n`;
                     tex += `\\end{wrapfigure}\n`;
                     if (content && !content.match(/^<!--/)) tex += contentToLatex(content, config) + '\n';
                 } else {
@@ -929,31 +942,31 @@ function blockToLatex(block, mirror = false, isFirst = false) {
             const hasAny = gRefs.some(r => r !== null);
             if (!hasAny) { tex += `% [Bloco Grade de Imagens sem imagens configuradas]\n`; break; }
 
+            let localPageStyleG = '';
+            if (hide_header && hide_footer) {
+                localPageStyleG = 'empty';
+            } else if (hide_header) {
+                localPageStyleG = 'noheader';
+            } else if (hide_footer) {
+                localPageStyleG = 'nofooter';
+            }
+
             if (exclusive_g) {
                 tex += `\\clearpage\n`;
-                // Determina o estilo da página respeitando hide_header e hide_footer
-                let effectivePageStyle = 'empty';
-                if (hide_header && hide_footer) {
-                    effectivePageStyle = 'empty';
-                } else if (hide_header) {
-                    effectivePageStyle = 'noheader';
-                } else if (hide_footer) {
-                    effectivePageStyle = 'nofooter';
-                } else {
-                    effectivePageStyle = 'empty';
-                }
-                tex += `\\thispagestyle{${effectivePageStyle}}\n`;
+                const style = localPageStyleG || 'empty';
+                tex += `\\thispagestyle{${style}}\n`;
             }
 
             if (gridLayout === 'stacked') {
                 // 2 images vertically stacked
                 const fullWidth = parseFloat(style_variables.imageWidth) || 0.85;
-                tex += `\\begin{figure}[${floatPosG}]\n  \\centering\n`;
+                tex += `\\begin{figure}[${floatPosG}]\n`;
+                tex += `  \\centering\n`;
                 if (gRefs[0]) {
                     tex += `  \\includegraphics[width=${fullWidth}\\textwidth]{${gRefs[0]}}\n`;
                     if (gCaps[0]) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(gCaps[0])}}\n`;
                 }
-                if (gRefs[0] && gRefs[1]) tex += `  \\vspace{${spacingG}}\\\\\n`;
+                if (gRefs[0] && gRefs[1]) tex += `  \\par\\vspace{${spacingG}}\n`;
                 if (gRefs[1]) {
                     tex += `  \\includegraphics[width=${fullWidth}\\textwidth]{${gRefs[1]}}\n`;
                     if (gCaps[1]) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(gCaps[1])}}\n`;
@@ -963,7 +976,8 @@ function blockToLatex(block, mirror = false, isFirst = false) {
 
             } else if (gridLayout === 'side-by-side') {
                 // 2 images side-by-side via minipage
-                tex += `\\begin{figure}[${floatPosG}]\n  \\centering\n`;
+                tex += `\\begin{figure}[${floatPosG}]\n`;
+                tex += `  \\centering\n`;
                 if (gRefs[0]) {
                     tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
                     tex += `    \\centering\n`;
@@ -984,10 +998,11 @@ function blockToLatex(block, mirror = false, isFirst = false) {
 
             } else if (gridLayout === 'grid-4') {
                 // 2×2 grid using 4 minipages
-                tex += `\\begin{figure}[${floatPosG}]\n  \\centering\n`;
+                tex += `\\begin{figure}[${floatPosG}]\n`;
+                tex += `  \\centering\n`;
                 const pairs = [[0,1],[2,3]];
-                for (const [a, b] of pairs) {
-                    if (!gRefs[a] && !gRefs[b]) continue;
+                pairs.forEach(([a, b], idx) => {
+                    if (!gRefs[a] && !gRefs[b]) return;
                     if (gRefs[a]) {
                         tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
                         tex += `    \\centering\n`;
@@ -1003,8 +1018,11 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                         if (gCaps[b]) tex += `    \\caption*{${capSizeCmd} ${escapeLatex(gCaps[b])}}\n`;
                         tex += `  \\end{minipage}\n`;
                     }
-                    tex += `  \\vspace{${spacingG}}\\\\\n`;
-                }
+                    
+                    if (idx === 0 && (gRefs[2] || gRefs[3])) {
+                        tex += `  \\par\\vspace{${spacingG}}\n`;
+                    }
+                });
                 if (captionG) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(captionG)}}\n`;
                 tex += `\\end{figure}\n`;
             }
