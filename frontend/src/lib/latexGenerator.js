@@ -400,20 +400,20 @@ function generatePreamble(globalSetup, metadata) {
     const fancyLines = mirror
         ? [
             '\\fancyfoot[LE,RO]{\\thepage}',
-            `\\fancyhead[RE]{${headerEvenText}}`,
-            `\\fancyhead[LO]{${headerOddText}}`
+            `\\fancyhead[LE]{${headerEvenText}}`,
+            `\\fancyhead[RO]{${headerOddText}}`
         ]
         : [
             '\\fancyfoot[C]{\\thepage}',
-            `\\fancyhead[L]{${headerEvenText}}`,
-            `\\fancyhead[R]{}` // Ensure right side is empty if not mirror
+            '\\fancyhead[L]{}',
+            `\\fancyhead[R]{${headerEvenText}}`
         ];
 
     const noHeaderLines = mirror
         ? [
             '\\fancyfoot[LE,RO]{\\thepage}',
-            '\\fancyhead[RE]{}',
-            '\\fancyhead[LO]{}'
+            '\\fancyhead[LE]{}',
+            '\\fancyhead[RO]{}'
           ]
         : [
             '\\fancyfoot[C]{\\thepage}',
@@ -424,13 +424,13 @@ function generatePreamble(globalSetup, metadata) {
     const noFooterLines = mirror
         ? [
             '\\fancyfoot[LE,RO]{}',
-            `\\fancyhead[RE]{${headerEvenText}}`,
-            `\\fancyhead[LO]{${headerOddText}}`
+            `\\fancyhead[LE]{${headerEvenText}}`,
+            `\\fancyhead[RO]{${headerOddText}}`
           ]
         : [
             '\\fancyfoot[C]{}',
-            `\\fancyhead[L]{${headerEvenText}}`,
-            `\\fancyhead[R]{}`
+            '\\fancyhead[L]{}',
+            `\\fancyhead[R]{${headerEvenText}}`
           ];
 
     const preamble = [
