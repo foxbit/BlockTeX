@@ -161,20 +161,35 @@ function htmlToLatex(html, config = {}) {
             const level = parseInt(tag[1]);
             const rawTitle = inlineHtmlToLatex(inner).trim();
             if (!rawTitle || /^[\\s]+$/.test(rawTitle)) continue;
+
+            const alignMatch = attrs.match(/text-align:\s*(center|right|left|justify)/);
+            const align = alignMatch ? alignMatch[1] : null;
             
             const valign = config.valign || 'top';
             if (level === 1 && (valign === 'middle' || valign === 'bottom')) {
                 // Ao alinhar verticalmente no meio/base da página, não usamos \chapter*
                 // pois ele força quebra de página e margens fixas que quebram o layout do valign.
                 // Em vez disso, desenhamos o título do capítulo inline de forma destacada.
-                output.push(`{\\Huge\\bfseries\\noindent ${rawTitle}\\par}\\vspace{1.5em}`);
+                let styleCmd = '\\noindent';
+                if (align === 'center') {
+                    styleCmd = '\\centering';
+                } else if (align === 'right') {
+                    styleCmd = '\\raggedleft';
+                }
+                output.push(`{\\Huge\\bfseries${styleCmd} ${rawTitle}\\par}\\vspace{1.5em}`);
                 output.push(`\\markboth{${rawTitle}}{}`);
                 if (isVisible && tocHeaders.h1 !== false) {
                     output.push(`\\addcontentsline{toc}{chapter}{${rawTitle}}`);
                 }
             } else {
                 const cmd = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
-                output.push(`\\${cmd}*{${rawTitle}}`);
+                let formattedTitle = rawTitle;
+                if (align === 'center') {
+                    formattedTitle = `\\centering ${rawTitle}`;
+                } else if (align === 'right') {
+                    formattedTitle = `\\raggedleft ${rawTitle}`;
+                }
+                output.push(`\\${cmd}*{${formattedTitle}}`);
                 if (level === 1) output.push(`\\markboth{${rawTitle}}{}`);
                 else if (level === 2) output.push(`\\markright{${rawTitle}}`);
                 if (isVisible) {
@@ -196,7 +211,12 @@ function htmlToLatex(html, config = {}) {
             const align = alignMatch ? alignMatch[1] : null;
             const text = inlineHtmlToLatex(inner);
 
-            if (!text.trim()) { output.push(''); continue; }
+            // Se o parágrafo estiver vazio ou contiver apenas uma quebra de linha, 
+            // insere um espaçamento vertical manual no PDF (equivalente a pular uma linha)
+            if (!text.trim() || text.trim() === '\\\\') {
+                output.push('\\vspace{\\baselineskip}');
+                continue;
+            }
 
             if (align === 'center') {
                 output.push(`{\\centering ${text}\\par}`);
@@ -398,6 +418,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\usepackage[utf8]{inputenc}',
         '\\usepackage[T1]{fontenc}',
         '\\usepackage[brazilian]{babel}',
+        '\\usepackage{indentfirst} % Garante recuo no primeiro parágrafo de capítulos/seções',
         '',
         '% ─── Typography ─────────────────────────────────────',
         fontPkg.trim() || '% (fonte padrão LaTeX)',
@@ -538,25 +559,24 @@ function blockToLatex(block, mirror = false, isFirst = false) {
     let { page_break, toc_visible = true, valign = 'top' } = config;
 
     let tex = '';
-    const breakCmd = mirror ? '\\cleardoublepage' : '\\clearpage';
+    const breakCmd = '\\clearpage';
 
-    // Define a quebra padrão para retrocompatibilidade caso 'page_break' não esteja definido
-    if (page_break === undefined || page_break === null) {
-        if (type === BLOCK_TYPES.CHAPTER || 
-            type === BLOCK_TYPES.CONTENT || 
-            type === BLOCK_TYPES.TOC || 
-            type === BLOCK_TYPES.TESTIMONIAL) {
+    // Para blocos estruturais principais, se a quebra de página for 'none' ou indefinida,
+    // nós definimos como 'before' para garantir que o texto do bloco sempre comece em uma página nova
+    // e não invada o conteúdo do bloco anterior.
+    if (type === BLOCK_TYPES.CHAPTER || 
+        type === BLOCK_TYPES.CONTENT || 
+        type === BLOCK_TYPES.TOC || 
+        type === BLOCK_TYPES.TESTIMONIAL) {
+        if (!page_break || page_break === 'none') {
             page_break = 'before';
-        } else {
-            page_break = 'none';
         }
     }
 
     // Se o alinhamento vertical for 'middle' ou 'bottom', o preenchimento vertical (\fill)
     // necessita que o bloco esteja em uma página própria para funcionar corretamente.
-    // Portanto, por padrão, definimos a quebra como 'before' a menos que o usuário tenha configurado explicitamente 'none'.
     if (valign === 'middle' || valign === 'bottom') {
-        if (page_break === undefined || page_break === null) {
+        if (!page_break || page_break === 'none') {
             page_break = 'before';
         }
     }
@@ -566,11 +586,13 @@ function blockToLatex(block, mirror = false, isFirst = false) {
         page_break = 'none';
     }
 
-    // Page break: isolated = cleardoublepage (starts on right/odd page)
+    // Executa a quebra de página selecionada:
+    // - 'isolated': Começa obrigatoriamente na próxima página ímpar (\cleardoublepage).
+    // - 'before': Começa na próxima página normal (\clearpage), sem criar páginas em branco desnecessárias.
     if (page_break === 'isolated') {
         tex += '\\cleardoublepage\n\n';
     } else if (page_break === 'before') {
-        tex += `${breakCmd}\n\n`;
+        tex += '\\clearpage\n\n';
     }
 
     // Se o alinhamento vertical for 'middle' ou 'bottom', inserimos o preenchimento vertical no topo da página
