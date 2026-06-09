@@ -762,6 +762,7 @@ function blockToLatex(block, mirror = false, isFirst = false) {
         case BLOCK_TYPES.IMAGE: {
             // ── Single image: inline in text, OR exclusive page ──────────────
             const caption    = style_variables.caption    || '';
+            const captionFontSize = style_variables.captionFontSize || 'small';
             const title      = style_variables.title      || '';
             const widthFrac  = parseFloat(style_variables.width) || 0.8;
             const layout     = style_variables.layout     || 'center'; // center | full | left | right
@@ -771,6 +772,16 @@ function blockToLatex(block, mirror = false, isFirst = false) {
             const cropAnchor = style_variables.cropAnchor || 'center'; // top | center | bottom
             const pageStyle  = style_variables.pageStyle  || 'empty';
             const exclusive  = style_variables.exclusivePage === true;
+
+            const sizeMap = {
+                tiny: '\\tiny',
+                scriptsize: '\\scriptsize',
+                footnotesize: '\\footnotesize',
+                small: '\\small',
+                normalsize: '\\normalsize',
+                large: '\\large'
+            };
+            const capSizeCmd = sizeMap[captionFontSize] || '\\small';
 
             // Resolve image source
             let imgRef = null;
@@ -797,7 +808,17 @@ function blockToLatex(block, mirror = false, isFirst = false) {
             if (exclusive) {
                 // ── Exclusive page mode ──────────────────────────────────────
                 tex += `${breakCmd}\n`;
-                tex += `\\thispagestyle{${pageStyle}}\n`;
+                
+                // Determina o estilo da página respeitando hide_header e hide_footer
+                let effectivePageStyle = pageStyle;
+                if (hide_header && hide_footer) {
+                    effectivePageStyle = 'empty';
+                } else if (hide_header) {
+                    effectivePageStyle = 'noheader';
+                } else if (hide_footer) {
+                    effectivePageStyle = 'nofooter';
+                }
+                tex += `\\thispagestyle{${effectivePageStyle}}\n`;
 
                 if (fillMode === 'bleed' && imgRef) {
                     if (keepRatio) {
@@ -820,7 +841,7 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                     if (title || caption) {
                         tex += `\\vspace*{\\fill}\n`;
                         if (title)   tex += `{\\centering\\color{white}\\large\\bfseries ${escapeLatex(title)}\\par\\vspace{0.5em}}\n`;
-                        if (caption) tex += `{\\centering\\color{white}\\small ${escapeLatex(caption)}\\par}\n`;
+                        if (caption) tex += `{\\centering\\color{white}${capSizeCmd} ${escapeLatex(caption)}\\par}\n`;
                         tex += `\\vspace*{\\fill}\n`;
                     } else {
                         tex += `\\null\n`;
@@ -842,12 +863,12 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                     } else if (fillMode === 'stretch') {
                         tex += `\\begin{figure}[H]\n  \\centering\n`;
                         tex += `  \\includegraphics[width=\\textwidth,height=0.85\\textheight]{${imgRef}}\n`;
-                        if (caption) tex += `  \\caption*{${escapeLatex(caption)}}\n`;
+                        if (caption) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(caption)}}\n`;
                         tex += `\\end{figure}\n`;
                     } else {
                         tex += `\\begin{figure}[H]\n  \\centering\n`;
                         tex += `  \\includegraphics[width=\\textwidth,height=0.85\\textheight,keepaspectratio]{${imgRef}}\n`;
-                        if (caption) tex += `  \\caption*{${escapeLatex(caption)}}\n`;
+                        if (caption) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(caption)}}\n`;
                         tex += `\\end{figure}\n`;
                     }
                     tex += `\\vspace*{\\fill}\n`;
@@ -857,7 +878,7 @@ function blockToLatex(block, mirror = false, isFirst = false) {
 
             } else {
                 // ── Inline mode (flows with text) ────────────────────────────
-                const captionTex = caption ? `  \\caption{${escapeLatex(caption)}}\n` : '';
+                const captionTex = caption ? `  \\caption{${capSizeCmd} ${escapeLatex(caption)}}\n` : '';
                 if (layout === 'full') {
                     tex += `\\begin{figure}[${floatPos}]\n  \\centering\n  \\includegraphics[width=\\textwidth]{${imgRef}}\n${captionTex}\\end{figure}\n`;
                 } else if (layout === 'left' || layout === 'right') {
@@ -866,7 +887,7 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                     tex += `\\begin{wrapfigure}{${wrapSide}}{${wrapWidth}}\n`;
                     tex += `  \\centering\n`;
                     tex += `  \\includegraphics[width=\\linewidth]{${imgRef}}\n`;
-                    if (caption) tex += `  \\caption{${escapeLatex(caption)}}\n`;
+                    if (caption) tex += `  \\caption{${capSizeCmd} ${escapeLatex(caption)}}\n`;
                     tex += `\\end{wrapfigure}\n`;
                     if (content && !content.match(/^<!--/)) tex += contentToLatex(content, config) + '\n';
                 } else {
@@ -897,7 +918,21 @@ function blockToLatex(block, mirror = false, isFirst = false) {
             const hasAny = gRefs.some(r => r !== null);
             if (!hasAny) { tex += `% [Bloco Grade de Imagens sem imagens configuradas]\n`; break; }
 
-            if (exclusive_g) tex += `\\clearpage\n`;
+            if (exclusive_g) {
+                tex += `\\clearpage\n`;
+                // Determina o estilo da página respeitando hide_header e hide_footer
+                let effectivePageStyle = 'empty';
+                if (hide_header && hide_footer) {
+                    effectivePageStyle = 'empty';
+                } else if (hide_header) {
+                    effectivePageStyle = 'noheader';
+                } else if (hide_footer) {
+                    effectivePageStyle = 'nofooter';
+                } else {
+                    effectivePageStyle = 'empty';
+                }
+                tex += `\\thispagestyle{${effectivePageStyle}}\n`;
+            }
 
             if (gridLayout === 'stacked') {
                 // 2 images vertically stacked

@@ -1010,6 +1010,18 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                             placeholder="Legenda opcional" />
                     </div>
                     <div className="form-group">
+                        <label className="form-label">Tamanho da Legenda</label>
+                        <select className="form-select" value={style_variables.captionFontSize || 'small'}
+                            onChange={e => onUpdateStyleVars({ captionFontSize: e.target.value })}>
+                            <option value="tiny">Muito Pequeno (Tiny)</option>
+                            <option value="scriptsize">Pequeno (Scriptsize)</option>
+                            <option value="footnotesize">Menor (Footnotesize)</option>
+                            <option value="small">Médio (Small)</option>
+                            <option value="normalsize">Normal (Normalsize)</option>
+                            <option value="large">Grande (Large)</option>
+                        </select>
+                    </div>
+                    <div className="form-group">
                         <label className="form-label">Nome do arquivo (export)</label>
                         <input className="form-input" value={style_variables.filename || ''}
                             onChange={e => onUpdateStyleVars({ filename: e.target.value.replace(/[^a-zA-Z0-9._-]/g, '_') })}
