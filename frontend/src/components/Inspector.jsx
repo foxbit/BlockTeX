@@ -483,6 +483,22 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                         onClick={() => onUpdateConfig({ toc_visible: config.toc_visible === false ? true : false })}
                     />
                 </div>
+
+                <div className="toggle-group">
+                    <span className="toggle-label">Ocultar Cabeçalho (Header)</span>
+                    <div
+                        className={`toggle ${config.hide_header === true ? 'on' : ''}`}
+                        onClick={() => onUpdateConfig({ hide_header: !config.hide_header })}
+                    />
+                </div>
+
+                <div className="toggle-group">
+                    <span className="toggle-label">Ocultar Rodapé (Número de Página)</span>
+                    <div
+                        className={`toggle ${config.hide_footer === true ? 'on' : ''}`}
+                        onClick={() => onUpdateConfig({ hide_footer: !config.hide_footer })}
+                    />
+                </div>
             </div>
 
             <div className="divider" />
