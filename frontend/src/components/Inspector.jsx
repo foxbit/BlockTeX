@@ -192,6 +192,133 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         )}
                     </>
                 )}
+                {/* Estilo do Cabeçalho */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Tamanho do Header</label>
+                        <select
+                            className="form-select"
+                            value={global_setup.headerFontSize || 'small'}
+                            onChange={e => onUpdateSetup({ headerFontSize: e.target.value })}
+                        >
+                            <option value="tiny">Muito Pequeno (Tiny)</option>
+                            <option value="scriptsize">Pequeno (Scriptsize)</option>
+                            <option value="footnotesize">Menor (Footnotesize)</option>
+                            <option value="small">Médio (Small)</option>
+                            <option value="normalsize">Normal (Normalsize)</option>
+                        </select>
+                    </div>
+                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', marginBottom: 0 }}>
+                        <div style={{ display: 'flex', gap: '5px', height: '32px' }}>
+                            <button
+                                type="button"
+                                title="Negrito"
+                                onClick={() => onUpdateSetup({ headerBold: !global_setup.headerBold })}
+                                style={{
+                                    flex: 1,
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    textAlign: 'center',
+                                    border: '1px solid',
+                                    borderRadius: 'var(--radius-sm)',
+                                    cursor: 'pointer',
+                                    background: global_setup.headerBold ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                    borderColor: global_setup.headerBold ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                    color: global_setup.headerBold ? 'white' : 'var(--text-secondary)',
+                                    transition: 'all 0.15s',
+                                }}
+                            >
+                                B
+                            </button>
+                            <button
+                                type="button"
+                                title="Itálico"
+                                onClick={() => onUpdateSetup({ headerItalic: !global_setup.headerItalic })}
+                                style={{
+                                    flex: 1,
+                                    fontSize: '11px',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                    border: '1px solid',
+                                    borderRadius: 'var(--radius-sm)',
+                                    cursor: 'pointer',
+                                    background: global_setup.headerItalic ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                    borderColor: global_setup.headerItalic ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                    color: global_setup.headerItalic ? 'white' : 'var(--text-secondary)',
+                                    transition: 'all 0.15s',
+                                }}
+                            >
+                                I
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="divider" />
+
+            <div className="inspector-section">
+                <div className="inspector-section-title">Rodapés</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Tamanho do Footer</label>
+                        <select
+                            className="form-select"
+                            value={global_setup.footerFontSize || 'normalsize'}
+                            onChange={e => onUpdateSetup({ footerFontSize: e.target.value })}
+                        >
+                            <option value="tiny">Muito Pequeno (Tiny)</option>
+                            <option value="scriptsize">Pequeno (Scriptsize)</option>
+                            <option value="footnotesize">Menor (Footnotesize)</option>
+                            <option value="small">Médio (Small)</option>
+                            <option value="normalsize">Normal (Normalsize)</option>
+                        </select>
+                    </div>
+                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', marginBottom: 0 }}>
+                        <div style={{ display: 'flex', gap: '5px', height: '32px' }}>
+                            <button
+                                type="button"
+                                title="Negrito"
+                                onClick={() => onUpdateSetup({ footerBold: !global_setup.footerBold })}
+                                style={{
+                                    flex: 1,
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    textAlign: 'center',
+                                    border: '1px solid',
+                                    borderRadius: 'var(--radius-sm)',
+                                    cursor: 'pointer',
+                                    background: global_setup.footerBold ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                    borderColor: global_setup.footerBold ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                    color: global_setup.footerBold ? 'white' : 'var(--text-secondary)',
+                                    transition: 'all 0.15s',
+                                }}
+                            >
+                                B
+                            </button>
+                            <button
+                                type="button"
+                                title="Itálico"
+                                onClick={() => onUpdateSetup({ footerItalic: !global_setup.footerItalic })}
+                                style={{
+                                    flex: 1,
+                                    fontSize: '11px',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                    border: '1px solid',
+                                    borderRadius: 'var(--radius-sm)',
+                                    cursor: 'pointer',
+                                    background: global_setup.footerItalic ? 'var(--accent-indigo)' : 'var(--bg-elevated)',
+                                    borderColor: global_setup.footerItalic ? 'var(--accent-indigo)' : 'var(--border-subtle)',
+                                    color: global_setup.footerItalic ? 'white' : 'var(--text-secondary)',
+                                    transition: 'all 0.15s',
+                                }}
+                            >
+                                I
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="divider" />

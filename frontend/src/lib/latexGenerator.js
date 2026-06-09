@@ -384,14 +384,35 @@ function generatePreamble(globalSetup, metadata) {
         }
     }
 
+    // Formato de fonte do Header
+    const hSize = globalSetup.headerFontSize || 'small';
+    const hBold = globalSetup.headerBold === true;
+    const hItalic = globalSetup.headerItalic === true;
+
+    let hStyleCmd = `\\${hSize}`;
+    if (hItalic) hStyleCmd += '\\itshape';
+    if (hBold) hStyleCmd += '\\bfseries';
+
+    // Formato de fonte do Footer
+    const fSize = globalSetup.footerFontSize || 'normalsize';
+    const fBold = globalSetup.footerBold === true;
+    const fItalic = globalSetup.footerItalic === true;
+
+    let fStyleCmd = `\\${fSize}`;
+    if (fItalic) fStyleCmd += '\\itshape';
+    if (fBold) fStyleCmd += '\\bfseries';
+
+    const formatHeader = (text) => text ? `{\\protect${hStyleCmd} ${text}}` : '{}';
+    const formatFooter = (text) => text ? `{\\protect${fStyleCmd} ${text}}` : '{}';
+
     // ── Header/footer style ──────────────────────────────────
     const getHeaderText = (styleOption, customText) => {
         if (styleOption === 'none') return '';
         if (styleOption === 'title') return escapeLatexTitle(title);
         if (styleOption === 'author') return escapeLatexTitle(author);
         if (styleOption === 'custom') return escapeLatexTitle(customText || '');
-        if (styleOption === 'chapter') return '\\textit{\\leftmark}';
-        return '\\textit{\\leftmark}';
+        if (styleOption === 'chapter') return '\\leftmark';
+        return '\\leftmark';
     };
 
     const headerEvenText = getHeaderText(globalSetup.headerStyleEven || 'chapter', globalSetup.headerCustomEven);
@@ -399,24 +420,24 @@ function generatePreamble(globalSetup, metadata) {
 
     const fancyLines = mirror
         ? [
-            '\\fancyfoot[LE,RO]{\\thepage}',
-            `\\fancyhead[LE]{${headerEvenText}}`,
-            `\\fancyhead[RO]{${headerOddText}}`
+            `\\fancyfoot[LE,RO]{${formatFooter('\\thepage')}}`,
+            `\\fancyhead[LE]{${formatHeader(headerEvenText)}}`,
+            `\\fancyhead[RO]{${formatHeader(headerOddText)}}`
         ]
         : [
-            '\\fancyfoot[C]{\\thepage}',
+            `\\fancyfoot[C]{${formatFooter('\\thepage')}}`,
             '\\fancyhead[L]{}',
-            `\\fancyhead[R]{${headerEvenText}}`
+            `\\fancyhead[R]{${formatHeader(headerEvenText)}}`
         ];
 
     const noHeaderLines = mirror
         ? [
-            '\\fancyfoot[LE,RO]{\\thepage}',
+            `\\fancyfoot[LE,RO]{${formatFooter('\\thepage')}}`,
             '\\fancyhead[LE]{}',
             '\\fancyhead[RO]{}'
           ]
         : [
-            '\\fancyfoot[C]{\\thepage}',
+            `\\fancyfoot[C]{${formatFooter('\\thepage')}}`,
             '\\fancyhead[L]{}',
             '\\fancyhead[R]{}'
           ];
@@ -424,13 +445,13 @@ function generatePreamble(globalSetup, metadata) {
     const noFooterLines = mirror
         ? [
             '\\fancyfoot[LE,RO]{}',
-            `\\fancyhead[LE]{${headerEvenText}}`,
-            `\\fancyhead[RO]{${headerOddText}}`
+            `\\fancyhead[LE]{${formatHeader(headerEvenText)}}`,
+            `\\fancyhead[RO]{${formatHeader(headerOddText)}}`
           ]
         : [
             '\\fancyfoot[C]{}',
             '\\fancyhead[L]{}',
-            `\\fancyhead[R]{${headerEvenText}}`
+            `\\fancyhead[R]{${formatHeader(headerEvenText)}}`
           ];
 
     const preamble = [
@@ -513,7 +534,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\renewcommand{\\headrulewidth}{0pt}',
         '\\fancypagestyle{plain}{',
         '  \\fancyhf{}',
-        mirror ? '  \\fancyfoot[LE,RO]{\\thepage}' : '  \\fancyfoot[C]{\\thepage}',
+        mirror ? `  \\fancyfoot[LE,RO]{${formatFooter('\\thepage')}}` : `  \\fancyfoot[C]{${formatFooter('\\thepage')}}`,
         '  \\renewcommand{\\headrulewidth}{0pt}',
         '}',
         '\\fancypagestyle{noheader}{',

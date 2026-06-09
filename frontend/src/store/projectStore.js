@@ -207,6 +207,12 @@ export const DEFAULT_PROJECT = {
         headerCustomEven: '',
         headerStyleOdd: 'chapter', // 'none', 'title', 'author', 'chapter', 'custom'
         headerCustomOdd: '',
+        headerFontSize: 'small',
+        headerBold: false,
+        headerItalic: true,
+        footerFontSize: 'normalsize',
+        footerBold: false,
+        footerItalic: false,
         // ── Tipografia do corpo (aplicada apenas em blocos CHAPTER e CONTENT) ──
         parindent:      '0pt',       // recuo da 1ª linha do parágrafo
         parskip:        '8pt',       // espaço entre parágrafos
