@@ -902,8 +902,19 @@ function blockToLatex(block, mirror = false, isFirst = false) {
             const gridLayout   = style_variables.gridLayout  || 'side-by-side'; // stacked | side-by-side | grid-4
             const exclusive_g  = style_variables.exclusivePage === true;
             const captionG     = style_variables.caption     || '';
+            const captionFontSize = style_variables.captionFontSize || 'small';
             const spacingG     = style_variables.spacing      || '1em';
             const floatPosG    = exclusive_g ? 'H' : (style_variables.floatPos || 'h');
+
+            const sizeMap = {
+                tiny: '\\tiny',
+                scriptsize: '\\scriptsize',
+                footnotesize: '\\footnotesize',
+                small: '\\small',
+                normalsize: '\\normalsize',
+                large: '\\large'
+            };
+            const capSizeCmd = sizeMap[captionFontSize] || '\\small';
 
             // Build asset refs for up to 4 images
             const gRefs = [1, 2, 3, 4].map(i => {
@@ -940,14 +951,14 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                 tex += `\\begin{figure}[${floatPosG}]\n  \\centering\n`;
                 if (gRefs[0]) {
                     tex += `  \\includegraphics[width=${fullWidth}\\textwidth]{${gRefs[0]}}\n`;
-                    if (gCaps[0]) tex += `  \\caption*{${escapeLatex(gCaps[0])}}\n`;
+                    if (gCaps[0]) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(gCaps[0])}}\n`;
                 }
                 if (gRefs[0] && gRefs[1]) tex += `  \\vspace{${spacingG}}\\\\\n`;
                 if (gRefs[1]) {
                     tex += `  \\includegraphics[width=${fullWidth}\\textwidth]{${gRefs[1]}}\n`;
-                    if (gCaps[1]) tex += `  \\caption*{${escapeLatex(gCaps[1])}}\n`;
+                    if (gCaps[1]) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(gCaps[1])}}\n`;
                 }
-                if (captionG) tex += `  \\caption*{${escapeLatex(captionG)}}\n`;
+                if (captionG) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(captionG)}}\n`;
                 tex += `\\end{figure}\n`;
 
             } else if (gridLayout === 'side-by-side') {
@@ -957,7 +968,7 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                     tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
                     tex += `    \\centering\n`;
                     tex += `    \\includegraphics[width=\\linewidth]{${gRefs[0]}}\n`;
-                    if (gCaps[0]) tex += `    \\caption*{${escapeLatex(gCaps[0])}}\n`;
+                    if (gCaps[0]) tex += `    \\caption*{${capSizeCmd} ${escapeLatex(gCaps[0])}}\n`;
                     tex += `  \\end{minipage}`;
                 }
                 if (gRefs[0] && gRefs[1]) tex += `\n  \\hfill\n`;
@@ -965,10 +976,10 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                     tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
                     tex += `    \\centering\n`;
                     tex += `    \\includegraphics[width=\\linewidth]{${gRefs[1]}}\n`;
-                    if (gCaps[1]) tex += `    \\caption*{${escapeLatex(gCaps[1])}}\n`;
+                    if (gCaps[1]) tex += `    \\caption*{${capSizeCmd} ${escapeLatex(gCaps[1])}}\n`;
                     tex += `  \\end{minipage}\n`;
                 }
-                if (captionG) tex += `  \\caption*{${escapeLatex(captionG)}}\n`;
+                if (captionG) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(captionG)}}\n`;
                 tex += `\\end{figure}\n`;
 
             } else if (gridLayout === 'grid-4') {
@@ -981,7 +992,7 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                         tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
                         tex += `    \\centering\n`;
                         tex += `    \\includegraphics[width=\\linewidth]{${gRefs[a]}}\n`;
-                        if (gCaps[a]) tex += `    \\caption*{${escapeLatex(gCaps[a])}}\n`;
+                        if (gCaps[a]) tex += `    \\caption*{${capSizeCmd} ${escapeLatex(gCaps[a])}}\n`;
                         tex += `  \\end{minipage}`;
                     }
                     if (gRefs[a] && gRefs[b]) tex += `\n  \\hfill\n`;
@@ -989,12 +1000,12 @@ function blockToLatex(block, mirror = false, isFirst = false) {
                         tex += `  \\begin{minipage}[t]{${wSlider}\\textwidth}\n`;
                         tex += `    \\centering\n`;
                         tex += `    \\includegraphics[width=\\linewidth]{${gRefs[b]}}\n`;
-                        if (gCaps[b]) tex += `    \\caption*{${escapeLatex(gCaps[b])}}\n`;
+                        if (gCaps[b]) tex += `    \\caption*{${capSizeCmd} ${escapeLatex(gCaps[b])}}\n`;
                         tex += `  \\end{minipage}\n`;
                     }
                     tex += `  \\vspace{${spacingG}}\\\\\n`;
                 }
-                if (captionG) tex += `  \\caption*{${escapeLatex(captionG)}}\n`;
+                if (captionG) tex += `  \\caption*{${capSizeCmd} ${escapeLatex(captionG)}}\n`;
                 tex += `\\end{figure}\n`;
             }
 

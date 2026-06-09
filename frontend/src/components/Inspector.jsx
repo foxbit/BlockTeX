@@ -1123,6 +1123,18 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                             onChange={e => onUpdateStyleVars({ caption: e.target.value })}
                             placeholder="Legenda para o conjunto de imagens" />
                     </div>
+                    <div className="form-group">
+                        <label className="form-label">Tamanho da Legenda</label>
+                        <select className="form-select" value={style_variables.captionFontSize || 'small'}
+                            onChange={e => onUpdateStyleVars({ captionFontSize: e.target.value })}>
+                            <option value="tiny">Muito Pequeno (Tiny)</option>
+                            <option value="scriptsize">Pequeno (Scriptsize)</option>
+                            <option value="footnotesize">Menor (Footnotesize)</option>
+                            <option value="small">Médio (Small)</option>
+                            <option value="normalsize">Normal (Normalsize)</option>
+                            <option value="large">Grande (Large)</option>
+                        </select>
+                    </div>
 
                     <div className="divider" style={{ margin: '12px 0' }} />
 
