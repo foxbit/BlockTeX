@@ -238,7 +238,6 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const handleSave = () => {
         onSave(block.id, content);
         setHasUnsavedChanges(false);
-        onClose();
     };
 
     const handleImportMarkdown = (e) => {
@@ -280,9 +279,27 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                         <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '8px' }}>Bloco #{block.id.split('-')[0]}</span>
                         {hasUnsavedChanges && <span style={{ color: 'var(--accent-amber)', fontSize: '11px', marginLeft: '8px' }}>• Não salvo</span>}
                     </div>
-                    <div className="drawer-actions">
-                        <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={handleSave}>Salvar & Fechar</button>
+                    <div className="drawer-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <button className="btn btn-primary" onClick={handleSave} disabled={!hasUnsavedChanges}>Salvar</button>
+                        <button 
+                            className="btn btn-ghost" 
+                            onClick={onClose}
+                            style={{ 
+                                fontSize: '18px', 
+                                padding: '4px 8px', 
+                                minWidth: 'auto', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                border: 'none', 
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                color: 'var(--text-muted)'
+                            }}
+                            title="Fechar Editor"
+                        >
+                            ✕
+                        </button>
                     </div>
                 </div>
 
