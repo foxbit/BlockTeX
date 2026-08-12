@@ -7,6 +7,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import { diffWords } from 'diff';
 import { useBackend } from '../hooks/useBackend.js';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import { TextSelection } from '@tiptap/pm/state';
 
 // Sanitiza a saída Markdown do TipTap, removendo entidades HTML
 // que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
@@ -20,7 +21,7 @@ function sanitizeMarkdown(md) {
         .replace(/&apos;/g, "'");
 }
 
-const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize }) => {
+const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize, onSearchToggle, showSearch }) => {
     if (!editor) return null;
 
     return (
@@ -182,6 +183,19 @@ const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize }) => {
                     ↪
                 </button>
             </div>
+
+            <div className="toolbar-sep" />
+
+            <div className="toolbar-group">
+                <button 
+                    onClick={onSearchToggle} 
+                    className={`toolbar-btn ${showSearch ? 'is-active' : ''}`}
+                    title="Localizar Palavra"
+                    style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                    🔍 Buscar
+                </button>
+            </div>
         </div>
     );
 };
@@ -196,6 +210,11 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [lastSaveInfo, setLastSaveInfo] = useState({ time: null, type: null });
     const scrollContainerRef = useRef(null);
 
+    // Estados da busca
+    const [showSearch, setShowSearch] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
     const handleZoomIn = () => setFontSize(prev => Math.min(prev + 1, 30));
     const handleZoomOut = () => setFontSize(prev => Math.max(prev - 1, 12));
 
@@ -203,6 +222,52 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     useEffect(() => {
         localStorage.setItem('blocktex_editor_zoom', fontSize.toString());
     }, [fontSize]);
+
+    // Busca de ocorrências no texto
+    const findMatches = (doc, term) => {
+        const matches = [];
+        if (!term) return matches;
+        doc.descendants((node, pos) => {
+            if (node.isText) {
+                const text = node.text;
+                const escapedTerm = term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                const regex = new RegExp(escapedTerm, 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    matches.push({
+                        start: pos + match.index,
+                        end: pos + match.index + match[0].length
+                    });
+                }
+            }
+        });
+        return matches;
+    };
+
+    const matches = editor ? findMatches(editor.state.doc, searchTerm) : [];
+
+    const scrollToMatch = (index) => {
+        if (!editor || !matches[index]) return;
+        const match = matches[index];
+        const { tr } = editor.state;
+        const selection = TextSelection.create(editor.state.doc, match.start, match.end);
+        tr.setSelection(selection).scrollIntoView();
+        editor.view.dispatch(tr);
+    };
+
+    const handleNextMatch = () => {
+        if (matches.length === 0) return;
+        const nextIndex = (currentMatchIndex + 1) % matches.length;
+        setCurrentMatchIndex(nextIndex);
+        scrollToMatch(nextIndex);
+    };
+
+    const handlePrevMatch = () => {
+        if (matches.length === 0) return;
+        const prevIndex = (currentMatchIndex - 1 + matches.length) % matches.length;
+        setCurrentMatchIndex(prevIndex);
+        scrollToMatch(prevIndex);
+    };
 
     // Salva a posição de rolagem quando o usuário rola o editor
     const handleScroll = (e) => {
@@ -271,15 +336,42 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
             decorations(state) {
                 const { selection } = state;
                 const isFocused = document.activeElement && document.activeElement.closest('.ProseMirror');
-                // Se o editor estiver focado ou a seleção estiver vazia, não desenha decoração
-                if (isFocused || selection.empty) return null;
+                const decs = [];
 
-                // Retorna decorações inline com a classe de realce para a seleção sem foco
-                return DecorationSet.create(state.doc, [
-                    Decoration.inline(selection.from, selection.to, {
-                        class: 'tiptap-blur-selection-highlight'
-                    })
-                ]);
+                // 1. Renderiza realce de busca
+                if (searchTerm) {
+                    let matchIdx = 0;
+                    state.doc.descendants((node, pos) => {
+                        if (node.isText) {
+                            const text = node.text;
+                            const escapedTerm = searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                            const regex = new RegExp(escapedTerm, 'gi');
+                            let match;
+                            while ((match = regex.exec(text)) !== null) {
+                                const start = pos + match.index;
+                                const end = start + match[0].length;
+                                const isCurrent = (matchIdx === currentMatchIndex);
+                                decs.push(
+                                    Decoration.inline(start, end, {
+                                        class: isCurrent ? 'tiptap-search-match-active' : 'tiptap-search-match'
+                                    })
+                                );
+                                matchIdx++;
+                            }
+                        }
+                    });
+                }
+
+                // 2. Se o editor estiver fora de foco e houver seleção, desenha a decoração de foco
+                if (!isFocused && !selection.empty) {
+                    decs.push(
+                        Decoration.inline(selection.from, selection.to, {
+                            class: 'tiptap-blur-selection-highlight'
+                        })
+                    );
+                }
+
+                return DecorationSet.create(state.doc, decs);
             }
         },
     });
@@ -383,7 +475,59 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                     onZoomIn={handleZoomIn}
                     onZoomOut={handleZoomOut}
                     fontSize={fontSize}
+                    onSearchToggle={() => {
+                        setShowSearch(prev => !prev);
+                        if (showSearch) {
+                            setSearchTerm('');
+                        }
+                    }}
+                    showSearch={showSearch}
                 />
+
+                {showSearch && (
+                    <div className="search-bar" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 16px',
+                        background: 'var(--bg-elevated)',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        fontSize: '11px'
+                    }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Localizar:</span>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Buscar palavra..."
+                            style={{ height: '24px', fontSize: '11px', flex: 1, maxWidth: '200px', padding: '2px 8px' }}
+                            value={searchTerm}
+                            onChange={e => {
+                                setSearchTerm(e.target.value);
+                                setCurrentMatchIndex(0);
+                            }}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                    if (e.shiftKey) {
+                                        handlePrevMatch();
+                                    } else {
+                                        handleNextMatch();
+                                    }
+                                    e.preventDefault();
+                                }
+                            }}
+                            autoFocus
+                        />
+                        <span style={{ color: 'var(--text-muted)', fontSize: '10px', minWidth: '40px' }}>
+                            {matches.length > 0 ? `${currentMatchIndex + 1}/${matches.length}` : '0/0'}
+                        </span>
+                        <button className="btn btn-ghost" style={{ padding: '2px 6px', minWidth: 'auto', fontSize: '10px' }} onClick={handlePrevMatch} disabled={matches.length === 0} title="Anterior (Shift+Enter)">↑</button>
+                        <button className="btn btn-ghost" style={{ padding: '2px 6px', minWidth: 'auto', fontSize: '10px' }} onClick={handleNextMatch} disabled={matches.length === 0} title="Próximo (Enter)">↓</button>
+                        <button className="btn btn-ghost" style={{ padding: '2px 4px', minWidth: 'auto', color: 'var(--accent-rose)', fontSize: '10px' }} onClick={() => {
+                            setShowSearch(false);
+                            setSearchTerm('');
+                        }}>✕</button>
+                    </div>
+                )}
 
                 <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', '--editor-zoom-level': `${fontSize}px` }}>
                     <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>

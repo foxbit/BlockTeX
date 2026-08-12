@@ -247,3 +247,17 @@
     border-radius: 2px;
 }
 
+/* Ocorrências de termos de busca (amarelo transparente) */
+.tiptap-search-match {
+    background-color: rgba(250, 204, 21, 0.4) !important;
+    border-radius: 2px;
+}
+
+/* Ocorrência de termo de busca ativa/focada (laranja vibrante) */
+.tiptap-search-match-active {
+    background-color: rgba(249, 115, 22, 0.5) !important;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px var(--accent-orange, #f97316);
+}
+
+
