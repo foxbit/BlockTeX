@@ -354,7 +354,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                         </div>
                     </div>
                     <div className="drawer-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <button className="btn btn-primary" onClick={() => handleSave('manual')} disabled={!hasUnsavedChanges}>Salvar</button>
+                        <button className="btn btn-primary" onClick={() => handleSave('manual')}>Salvar</button>
                         <button 
                             className="btn btn-ghost" 
                             onClick={onClose}
