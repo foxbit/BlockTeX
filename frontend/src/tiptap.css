@@ -309,5 +309,43 @@
     z-index: 20;
 }
 
+/* BUBBLE MENU (MENU FLUTUANTE DE FORMATAÇÃO) */
+.bubble-menu {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    padding: 4px;
+    gap: 4px;
+    z-index: 50;
+}
+
+.bubble-menu button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    transition: all 0.15s;
+    min-width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bubble-menu button:hover {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+.bubble-menu button.is-active {
+    background-color: var(--accent-indigo) !important;
+    color: white !important;
+}
+
+
 
 

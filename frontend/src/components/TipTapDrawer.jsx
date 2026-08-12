@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import Underline from '@tiptap/extension-underline';
@@ -582,6 +583,42 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
 
                 <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', '--editor-zoom-level': `${fontSize}px` }}>
                     <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                        {editor && (
+                            <BubbleMenu className="bubble-menu" editor={editor} tippyOptions={{ duration: 100 }}>
+                                <button
+                                    onClick={() => editor.chain().focus().toggleBold().run()}
+                                    className={editor.isActive('bold') ? 'is-active' : ''}
+                                    type="button"
+                                    title="Negrito"
+                                >
+                                    <b>B</b>
+                                </button>
+                                <button
+                                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                                    className={editor.isActive('italic') ? 'is-active' : ''}
+                                    type="button"
+                                    title="Itálico"
+                                >
+                                    <i>I</i>
+                                </button>
+                                <button
+                                    onClick={() => editor.chain().focus().toggleUnderline().run()}
+                                    className={editor.isActive('underline') ? 'is-active' : ''}
+                                    type="button"
+                                    title="Sublinhado"
+                                >
+                                    <u>U</u>
+                                </button>
+                                <button
+                                    onClick={() => editor.chain().focus().toggleStrike().run()}
+                                    className={editor.isActive('strike') ? 'is-active' : ''}
+                                    type="button"
+                                    title="Tachado"
+                                >
+                                    <s>S</s>
+                                </button>
+                            </BubbleMenu>
+                        )}
                         <EditorContent editor={editor} className="tiptap-editor-area" />
                     </div>
                     <AIPanel editor={editor} block={block} globalSetup={globalSetup} />
