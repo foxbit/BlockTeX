@@ -329,11 +329,11 @@ export function SettingsModal({ getAISettings, saveAISettings, onClose }) {
                                     value={provider} 
                                     onChange={e => setProvider(e.target.value)}
                                 >
-                                    <option value="gemini">Google Gemini</option>
+                                    <option value="opencode">OpenCode Gateway</option>
                                 </select>
-                                {!availableProviders.gemini && (
-                                    <div style={{ color: 'var(--accent-red)', fontSize: '11px', marginTop: '6px', fontWeight: 500 }}>
-                                        ⚠️ A chave GEMINI_API_KEY não foi detectada no arquivo .env do servidor. O assistente não funcionará até que ela seja configurada.
+                                {!availableProviders.opencode && (
+                                    <div style={{ color: 'var(--accent-rose)', fontSize: '11px', marginTop: '6px', fontWeight: 500 }}>
+                                        ⚠️ A chave OPENCODE_API_KEY não foi detectada no arquivo .env do servidor. O assistente não funcionará até que ela seja configurada.
                                     </div>
                                 )}
                             </div>
@@ -345,8 +345,7 @@ export function SettingsModal({ getAISettings, saveAISettings, onClose }) {
                                     value={model} 
                                     onChange={e => setModel(e.target.value)}
                                 >
-                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado - Rápido)</option>
-                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Preciso - Mais Lento)</option>
+                                    <option value="deepseek-v4-flash">DeepSeek V4 Flash (Recomendado)</option>
                                 </select>
                             </div>
                         </div>

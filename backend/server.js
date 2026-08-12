@@ -376,15 +376,15 @@ app.post('/api/project/migrate', authenticate, async (req, res) => {
 // Obter configurações de IA do sistema (sem expor as chaves)
 app.get('/api/ai/settings', authenticate, async (req, res) => {
     try {
-        const hasGeminiKey = !!process.env.GEMINI_API_KEY;
-        const provider = await db.getGlobalStyle('settings_ai_provider') || 'gemini';
-        const model = await db.getGlobalStyle('settings_ai_model') || 'gemini-2.5-flash';
+        const hasOpenCodeKey = !!process.env.OPENCODE_API_KEY;
+        const provider = await db.getGlobalStyle('settings_ai_provider') || 'opencode';
+        const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-flash';
         res.json({
             success: true,
             provider,
             model,
             availableProviders: {
-                gemini: hasGeminiKey
+                opencode: hasOpenCodeKey
             }
         });
     } catch (err) {
@@ -404,7 +404,7 @@ app.post('/api/ai/settings', authenticate, async (req, res) => {
     }
 });
 
-// Transformação de texto usando IA (Gemini)
+// Transformação de texto usando IA (OpenCode / DeepSeek)
 app.post('/api/ai/transform', authenticate, async (req, res) => {
     try {
         const { text, prompt } = req.body;
@@ -413,32 +413,54 @@ app.post('/api/ai/transform', authenticate, async (req, res) => {
             return res.status(400).json({ error: 'Texto e instrução do prompt são obrigatórios.' });
         }
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.OPENCODE_API_KEY;
         if (!apiKey) {
             return res.status(400).json({ 
-                error: 'A chave da API do Gemini (GEMINI_API_KEY) não está configurada no arquivo .env do servidor.' 
+                error: 'A chave da API da OpenCode (OPENCODE_API_KEY) não está configurada no arquivo .env do servidor.' 
             });
         }
 
-        const model = await db.getGlobalStyle('settings_ai_model') || 'gemini-2.5-flash';
-        const ai = new GoogleGenAI({ apiKey });
-        
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: `Você é um assistente de edição de textos integrado ao BlockTeX. 
-Sua tarefa é modificar o texto original fornecido seguindo estritamente a instrução do prompt do usuário. 
-Retorne APENAS o texto modificado final em formato Markdown, sem comentários, sem explicações adicionais e sem blocos de código markdown.
+        const baseUrl = process.env.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1';
+        const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-flash';
 
-Texto Original:
+        const response = await fetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Você é um assistente de edição de textos integrado ao BlockTeX. 
+Sua tarefa é modificar o texto original fornecido seguindo estritamente a instrução do prompt do usuário. 
+Retorne APENAS o texto modificado final em formato Markdown, sem comentários, sem explicações adicionais e sem blocos de código markdown.`
+                    },
+                    {
+                        role: 'user',
+                        content: `Texto Original:
 """
 ${text}
 """
 
 Instrução/Prompt do usuário:
 "${prompt}"`
+                    }
+                ],
+                temperature: 0.3
+            })
         });
 
-        res.json({ success: true, transformedText: response.text });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`OpenCode API error (${response.status}): ${errorText}`);
+        }
+
+        const data = await response.json();
+        const transformedText = data.choices?.[0]?.message?.content || '';
+        res.json({ success: true, transformedText });
     } catch (err) {
         console.error('Erro na chamada da API de IA:', err);
         res.status(500).json({ error: `Erro no assistente de IA: ${err.message}` });

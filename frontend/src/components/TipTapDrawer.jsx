@@ -249,7 +249,7 @@ function AIPanel({ editor, block }) {
     useEffect(() => {
         const checkConfig = async () => {
             const settings = await getAISettings();
-            if (settings.success && settings.availableProviders?.gemini) {
+            if (settings.success && settings.availableProviders?.opencode) {
                 setHasApiKey(true);
             } else {
                 setHasApiKey(false);
@@ -327,7 +327,7 @@ function AIPanel({ editor, block }) {
             
             {!hasApiKey && (
                 <div style={{ background: '#f43f5e1c', color: '#f43f5e', border: '1px solid #f43f5e3b', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '11px', marginBottom: '16px', lineHeight: 1.4 }}>
-                    ⚠️ Chave API do Gemini não configurada no servidor. Configure o arquivo `.env` para usar a IA.
+                    ⚠️ Chave API da OpenCode não configurada no servidor. Configure o arquivo `.env` para usar a IA.
                 </div>
             )}
 
