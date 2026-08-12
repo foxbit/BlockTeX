@@ -239,20 +239,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const searchTermRef = useRef(searchTerm);
     const currentMatchIndexRef = useRef(currentMatchIndex);
 
-    // Sincroniza referências com o estado e dispara transações de atualização visual
-    useEffect(() => {
-        searchTermRef.current = searchTerm;
-        if (editor) {
-            editor.view.dispatch(editor.state.tr);
-        }
-    }, [searchTerm, editor]);
 
-    useEffect(() => {
-        currentMatchIndexRef.current = currentMatchIndex;
-        if (editor) {
-            editor.view.dispatch(editor.state.tr);
-        }
-    }, [currentMatchIndex, editor]);
 
     const handleZoomIn = () => setFontSize(prev => Math.min(prev + 1, 30));
     const handleZoomOut = () => setFontSize(prev => Math.max(prev - 1, 12));
@@ -414,6 +401,21 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
         setCurrentMatchIndex(prevIndex);
         scrollToMatch(prevIndex);
     };
+
+    // Sincroniza referências com o estado e dispara transações de atualização visual ao editor após sua inicialização
+    useEffect(() => {
+        searchTermRef.current = searchTerm;
+        if (editor) {
+            editor.view.dispatch(editor.state.tr);
+        }
+    }, [searchTerm, editor]);
+
+    useEffect(() => {
+        currentMatchIndexRef.current = currentMatchIndex;
+        if (editor) {
+            editor.view.dispatch(editor.state.tr);
+        }
+    }, [currentMatchIndex, editor]);
 
     // Re-inject content when switching blocks if the editor instance survived
     useEffect(() => {
