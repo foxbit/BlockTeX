@@ -376,7 +376,7 @@ app.post('/api/project/migrate', authenticate, async (req, res) => {
 // Obter configurações de IA do sistema (sem expor as chaves)
 app.get('/api/ai/settings', authenticate, async (req, res) => {
     try {
-        const hasOpenCodeKey = !!process.env.OPENCODE_API_KEY;
+        const hasOpenCodeKey = !!(process.env.OPENCODE_API_KEY && process.env.OPENCODE_API_KEY.trim());
         const provider = await db.getGlobalStyle('settings_ai_provider') || 'opencode';
         const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-flash';
         res.json({
@@ -413,14 +413,14 @@ app.post('/api/ai/transform', authenticate, async (req, res) => {
             return res.status(400).json({ error: 'Texto e instrução do prompt são obrigatórios.' });
         }
 
-        const apiKey = process.env.OPENCODE_API_KEY;
+        const apiKey = process.env.OPENCODE_API_KEY ? process.env.OPENCODE_API_KEY.trim() : null;
         if (!apiKey) {
             return res.status(400).json({ 
                 error: 'A chave da API da OpenCode (OPENCODE_API_KEY) não está configurada no arquivo .env do servidor.' 
             });
         }
 
-        const baseUrl = process.env.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1';
+        const baseUrl = (process.env.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1').trim();
         const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-flash';
 
         const response = await fetch(`${baseUrl}/chat/completions`, {
