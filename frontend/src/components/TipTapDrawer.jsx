@@ -281,6 +281,30 @@ function AIPanel({ editor, block }) {
     const [isSelection, setIsSelection] = useState(false);
     const [showDiff, setShowDiff] = useState(false);
     const [hasApiKey, setHasApiKey] = useState(false);
+    const [selectionText, setSelectionText] = useState('');
+
+    useEffect(() => {
+        if (!editor) return;
+
+        const updateSelection = () => {
+            const { from, to } = editor.state.selection;
+            if (from !== to) {
+                const text = editor.state.doc.textBetween(from, to, ' ');
+                setSelectionText(text);
+            } else {
+                setSelectionText('');
+            }
+        };
+
+        // Run initially
+        updateSelection();
+
+        // Listen for selection updates
+        editor.on('selectionUpdate', updateSelection);
+        return () => {
+            editor.off('selectionUpdate', updateSelection);
+        };
+    }, [editor]);
 
     useEffect(() => {
         const checkConfig = async () => {
@@ -370,7 +394,14 @@ function AIPanel({ editor, block }) {
             {!showDiff ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Selecione um trecho de texto no editor ao lado ou deixe em branco para atuar em todo o bloco.
+                        {selectionText ? (
+                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(139, 92, 246, 0.2)', marginBottom: '4px', lineHeight: 1.4 }}>
+                                <span style={{ fontWeight: 600, display: 'block', marginBottom: '2px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>✨ Trecho Selecionado</span>
+                                "{selectionText.length > 90 ? selectionText.substring(0, 90) + '...' : selectionText}"
+                            </div>
+                        ) : (
+                            "Selecione um trecho de texto no editor ao lado ou deixe em branco para atuar em todo o bloco."
+                        )}
                     </div>
 
                     <div className="presets-container">
