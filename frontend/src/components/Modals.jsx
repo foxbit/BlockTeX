@@ -266,3 +266,100 @@ export function ExportTexModal({ texContent, onClose }) {
         </div>
     );
 }
+
+export function SettingsModal({ getAISettings, saveAISettings, onClose }) {
+    const [provider, setProvider] = useState('gemini');
+    const [model, setModel] = useState('gemini-2.5-flash');
+    const [availableProviders, setAvailableProviders] = useState({ gemini: false });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        const loadSettings = async () => {
+            setLoading(true);
+            const res = await getAISettings();
+            if (res.success) {
+                setProvider(res.provider || 'gemini');
+                setModel(res.model || 'gemini-2.5-flash');
+                setAvailableProviders(res.availableProviders || { gemini: false });
+            }
+            setLoading(false);
+        };
+        loadSettings();
+    }, [getAISettings]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        const res = await saveAISettings({ provider, model });
+        setSaving(false);
+        if (res.success) {
+            alert('Configurações salvas com sucesso!');
+            onClose();
+        } else {
+            alert('Erro ao salvar configurações: ' + res.error);
+        }
+    };
+
+    return (
+        <div className="modal-overlay">
+            <form className="modal" onSubmit={handleSubmit} style={{ maxWidth: '480px' }}>
+                <div className="modal-header">
+                    <div style={{
+                        width: '40px', height: '40px', flexShrink: 0,
+                        background: 'linear-gradient(135deg, var(--accent-indigo), var(--accent-violet))',
+                        borderRadius: 'var(--radius-md)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
+                    }}>⚙️</div>
+                    <h2 className="modal-title">Configurações do Sistema</h2>
+                    <button type="button" className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+                </div>
+
+                <div className="modal-body" style={{ minHeight: '180px' }}>
+                    {loading ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            Carregando configurações...
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="form-group">
+                                <label className="form-label">Provedor de IA</label>
+                                <select 
+                                    className="form-input" 
+                                    value={provider} 
+                                    onChange={e => setProvider(e.target.value)}
+                                >
+                                    <option value="gemini">Google Gemini</option>
+                                </select>
+                                {!availableProviders.gemini && (
+                                    <div style={{ color: 'var(--accent-red)', fontSize: '11px', marginTop: '6px', fontWeight: 500 }}>
+                                        ⚠️ A chave GEMINI_API_KEY não foi detectada no arquivo .env do servidor. O assistente não funcionará até que ela seja configurada.
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Modelo de IA</label>
+                                <select 
+                                    className="form-input" 
+                                    value={model} 
+                                    onChange={e => setModel(e.target.value)}
+                                >
+                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado - Rápido)</option>
+                                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Preciso - Mais Lento)</option>
+                                </select>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="modal-footer">
+                    <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary" disabled={loading || saving}>
+                        {saving ? 'Salvando...' : 'Salvar Configurações'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}

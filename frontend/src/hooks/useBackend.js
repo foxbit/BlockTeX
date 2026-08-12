@@ -177,11 +177,46 @@ export function useBackend() {
         }
     }, [token, logout]);
 
+    const getAISettings = useCallback(async () => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/ai/settings`, {}, 8000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
+    const saveAISettings = useCallback(async (settings) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/ai/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings),
+            }, 8000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
+    const transformText = useCallback(async (text, prompt) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/ai/transform`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, prompt }),
+            }, 60000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
     const clearLogs = useCallback(() => setLogs([]), []);
 
     return {
         status, logs, compile,
         saveProject, loadProject, listProjects, deleteProject, migrateLegacyProjects,
-        clearLogs, checkHealth
+        clearLogs, checkHealth, getAISettings, saveAISettings, transformText
     };
 }

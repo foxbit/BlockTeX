@@ -1826,3 +1826,57 @@ body {
     border-color: var(--accent-indigo);
     box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
 }
+
+/* ============================================================
+   AI Assistant Panel & Diff Viewer
+============================================================ */
+.ai-assistant-panel {
+    width: 320px;
+    border-left: 1px solid var(--border-subtle);
+    padding: 24px;
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+.ai-panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+}
+
+.presets-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.diff-viewer {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    max-height: 350px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+}
+
+.diff-added {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    text-decoration: underline;
+}
+
+.diff-removed {
+    background-color: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
+    text-decoration: line-through;
+}

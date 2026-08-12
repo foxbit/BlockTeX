@@ -1,13 +1,22 @@
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+// Tenta carregar .env da raiz do projeto, ou do diretório atual
+const rootEnvPath = path.join(__dirname, '../.env');
+if (fs.existsSync(rootEnvPath)) {
+    require('dotenv').config({ path: rootEnvPath });
+} else {
+    require('dotenv').config();
+}
+
 const express = require('express');
 const cors = require('cors');
 const { WebSocketServer } = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
 const { exec, spawn } = require('child_process');
 const os = require('os');
+const { GoogleGenAI } = require('@google/genai');
 
 // Integração com Banco de Dados SQLite
 const db = require('./database');
@@ -16,7 +25,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const url = require('url');
 const { authenticate, SECRET_KEY } = require('./auth');
-
 
 const app = express();
 const server = http.createServer(app);
@@ -358,6 +366,82 @@ app.post('/api/project/migrate', authenticate, async (req, res) => {
     } catch (err) {
         console.error('Migration error', err);
         res.status(500).json({ error: 'Migration failed' });
+    }
+});
+
+// ────────────────────────────────────────────────────────────
+// API do Assistente de IA
+// ────────────────────────────────────────────────────────────
+
+// Obter configurações de IA do sistema (sem expor as chaves)
+app.get('/api/ai/settings', authenticate, async (req, res) => {
+    try {
+        const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+        const provider = await db.getGlobalStyle('settings_ai_provider') || 'gemini';
+        const model = await db.getGlobalStyle('settings_ai_model') || 'gemini-2.5-flash';
+        res.json({
+            success: true,
+            provider,
+            model,
+            availableProviders: {
+                gemini: hasGeminiKey
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao carregar configurações de IA' });
+    }
+});
+
+// Salvar configurações de IA do sistema
+app.post('/api/ai/settings', authenticate, async (req, res) => {
+    try {
+        const { provider, model } = req.body;
+        if (provider) await db.setGlobalStyle('settings_ai_provider', provider);
+        if (model) await db.setGlobalStyle('settings_ai_model', model);
+        res.json({ success: true, message: 'Configurações salvas com sucesso' });
+    } catch (err) {
+        res.status(500).json({ error: 'Erro ao salvar configurações de IA' });
+    }
+});
+
+// Transformação de texto usando IA (Gemini)
+app.post('/api/ai/transform', authenticate, async (req, res) => {
+    try {
+        const { text, prompt } = req.body;
+        
+        if (!text || !prompt) {
+            return res.status(400).json({ error: 'Texto e instrução do prompt são obrigatórios.' });
+        }
+
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            return res.status(400).json({ 
+                error: 'A chave da API do Gemini (GEMINI_API_KEY) não está configurada no arquivo .env do servidor.' 
+            });
+        }
+
+        const model = await db.getGlobalStyle('settings_ai_model') || 'gemini-2.5-flash';
+        const ai = new GoogleGenAI({ apiKey });
+        
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: `Você é um assistente de edição de textos integrado ao BlockTeX. 
+Sua tarefa é modificar o texto original fornecido seguindo estritamente a instrução do prompt do usuário. 
+Retorne APENAS o texto modificado final em formato Markdown, sem comentários, sem explicações adicionais e sem blocos de código markdown.
+
+Texto Original:
+"""
+${text}
+"""
+
+Instrução/Prompt do usuário:
+"${prompt}"`
+        });
+
+        res.json({ success: true, transformedText: response.text });
+    } catch (err) {
+        console.error('Erro na chamada da API de IA:', err);
+        res.status(500).json({ error: `Erro no assistente de IA: ${err.message}` });
     }
 });
 
