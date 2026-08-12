@@ -240,3 +240,10 @@
     background: none;
     font-size: 0.8rem;
 }
+
+/* Realce visual para a seleção do ProseMirror quando fora de foco */
+.tiptap-blur-selection-highlight {
+    background-color: rgba(139, 92, 246, 0.25) !important;
+    border-radius: 2px;
+}
+

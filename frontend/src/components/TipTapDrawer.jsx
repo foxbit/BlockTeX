@@ -6,6 +6,7 @@ import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { diffWords } from 'diff';
 import { useBackend } from '../hooks/useBackend.js';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
 // Sanitiza a saída Markdown do TipTap, removendo entidades HTML
 // que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
@@ -233,6 +234,29 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
             const markdownOutput = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
             setContent(markdownOutput);
             setHasUnsavedChanges(true);
+        },
+        onFocus: ({ editor }) => {
+            // Força a reavaliação de decorações do ProseMirror ao focar
+            editor.view.dispatch(editor.state.tr);
+        },
+        onBlur: ({ editor }) => {
+            // Força a reavaliação de decorações do ProseMirror ao perder o foco
+            editor.view.dispatch(editor.state.tr);
+        },
+        editorProps: {
+            decorations(state) {
+                const { selection } = state;
+                const isFocused = document.activeElement && document.activeElement.closest('.ProseMirror');
+                // Se o editor estiver focado ou a seleção estiver vazia, não desenha decoração
+                if (isFocused || selection.empty) return null;
+
+                // Retorna decorações inline com a classe de realce para a seleção sem foco
+                return DecorationSet.create(state.doc, [
+                    Decoration.inline(selection.from, selection.to, {
+                        class: 'tiptap-blur-selection-highlight'
+                    })
+                ]);
+            }
         },
     });
 
