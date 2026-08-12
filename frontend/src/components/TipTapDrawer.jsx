@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
@@ -189,11 +189,27 @@ const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize }) => {
 export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [content, setContent] = useState('');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    const [fontSize, setFontSize] = useState(15);
+    const [fontSize, setFontSize] = useState(() => {
+        const saved = localStorage.getItem('blocktex_editor_zoom');
+        return saved ? parseInt(saved, 10) : 15;
+    });
     const [lastSaveInfo, setLastSaveInfo] = useState({ time: null, type: null });
+    const scrollContainerRef = useRef(null);
 
     const handleZoomIn = () => setFontSize(prev => Math.min(prev + 1, 30));
     const handleZoomOut = () => setFontSize(prev => Math.max(prev - 1, 12));
+
+    // Persiste zoom no localStorage
+    useEffect(() => {
+        localStorage.setItem('blocktex_editor_zoom', fontSize.toString());
+    }, [fontSize]);
+
+    // Salva a posição de rolagem quando o usuário rola o editor
+    const handleScroll = (e) => {
+        if (block?.id) {
+            localStorage.setItem(`blocktex_scroll_${block.id}`, e.target.scrollTop.toString());
+        }
+    };
 
     // Auto-save debounced effect (5 seconds without editing)
     useEffect(() => {
@@ -206,12 +222,20 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
         return () => clearTimeout(timer);
     }, [content, hasUnsavedChanges]);
 
-    // Sync state when drawer opens with a specific block
+    // Sync state and restore scroll position when switching blocks
     useEffect(() => {
         if (open && block) {
             setContent(block.content || '');
             setHasUnsavedChanges(false);
             setLastSaveInfo({ time: null, type: null });
+
+            // Restaura posição de rolagem salva
+            const savedScroll = localStorage.getItem(`blocktex_scroll_${block.id}`);
+            setTimeout(() => {
+                if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollTop = savedScroll ? parseInt(savedScroll, 10) : 0;
+                }
+            }, 50);
         }
     }, [open, block?.id]);
 
@@ -362,7 +386,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                 />
 
                 <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', '--editor-zoom-level': `${fontSize}px` }}>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                    <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                         <EditorContent editor={editor} className="tiptap-editor-area" />
                     </div>
                     <AIPanel editor={editor} block={block} globalSetup={globalSetup} />
