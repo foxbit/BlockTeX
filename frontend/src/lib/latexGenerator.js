@@ -386,8 +386,8 @@ function getThemeConfig(theme) {
             linespread:   '1.25',
             sectionStyle: [
                 '\\usepackage{titlesec}',
-                '\\titleformat{\\section}[hang]{\\large\\bfseries}{}{0pt}{}[\\vspace{2pt}\\hrule\\vspace{2pt}]',
-                '\\titleformat{\\subsection}[hang]{\\normalsize\\itshape}{}{0pt}{}',
+                '\\titleformat{\\section}[hang]{\\large\\bfseries}{}{{0pt}}{}[\\vspace{2pt}\\hrule\\vspace{2pt}]',
+                '\\titleformat{\\subsection}[hang]{\\normalsize\\itshape}{}{{0pt}}{}',
             ].join('\n'),
         },
         technical: {
@@ -396,8 +396,8 @@ function getThemeConfig(theme) {
             linespread:   '1.15',
             sectionStyle: [
                 '\\usepackage{titlesec}',
-                '\\titleformat{\\section}[block]{\\large\\bfseries\\sffamily}{}{0pt}{}[\\vspace{1pt}\\hrule]',
-                '\\titleformat{\\subsection}[block]{\\normalsize\\bfseries\\sffamily}{}{0pt}{}',
+                '\\titleformat{\\section}[block]{\\large\\bfseries\\sffamily}{}{{0pt}}{}[\\vspace{1pt}\\hrule]',
+                '\\titleformat{\\subsection}[block]{\\normalsize\\bfseries\\sffamily}{}{{0pt}}{}',
             ].join('\n'),
         },
         minimal: {
@@ -406,8 +406,8 @@ function getThemeConfig(theme) {
             linespread:   '1.35',
             sectionStyle: [
                 '\\usepackage{titlesec}',
-                '\\titleformat{\\section}[hang]{\\large\\scshape}{}{0pt}{}',
-                '\\titleformat{\\subsection}[hang]{\\normalsize\\itshape}{}{0pt}{}',
+                '\\titleformat{\\section}[hang]{\\large\\scshape}{}{{0pt}}{}',
+                '\\titleformat{\\subsection}[hang]{\\normalsize\\itshape}{}{{0pt}}{}',
             ].join('\n'),
         },
         corporate: {
@@ -416,8 +416,8 @@ function getThemeConfig(theme) {
             linespread:   '1.1',
             sectionStyle: [
                 '\\usepackage{titlesec}',
-                '\\titleformat{\\section}[block]{\\large\\bfseries\\sffamily}{}{0pt}{}',
-                '\\titleformat{\\subsection}[block]{\\normalsize\\bfseries\\sffamily}{}{0pt}{}',
+                '\\titleformat{\\section}[block]{\\large\\bfseries\\sffamily}{}{{0pt}}{}',
+                '\\titleformat{\\subsection}[block]{\\normalsize\\bfseries\\sffamily}{}{{0pt}}{}',
             ].join('\n'),
         },
     };
