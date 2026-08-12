@@ -191,6 +191,7 @@ const findMatches = (doc, term) => {
 };
 
 const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize, onSearchToggle, showSearch }) => {
+    const [showFlagSelector, setShowFlagSelector] = useState(false);
     if (!editor) return null;
 
     return (
@@ -443,7 +444,6 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [showSearch, setShowSearch] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
-    const [showFlagSelector, setShowFlagSelector] = useState(false);
 
     const searchTermRef = useRef(searchTerm);
     const currentMatchIndexRef = useRef(currentMatchIndex);
