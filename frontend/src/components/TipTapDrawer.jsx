@@ -21,6 +21,27 @@ function sanitizeMarkdown(md) {
         .replace(/&apos;/g, "'");
 }
 
+// Busca de ocorrências no texto (declarada fora para evitar problemas de hoisting)
+const findMatches = (doc, term) => {
+    const matches = [];
+    if (!term) return matches;
+    doc.descendants((node, pos) => {
+        if (node.isText) {
+            const text = node.text;
+            const escapedTerm = term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(escapedTerm, 'gi');
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                matches.push({
+                    start: pos + match.index,
+                    end: pos + match.index + match[0].length
+                });
+            }
+        }
+    });
+    return matches;
+};
+
 const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize, onSearchToggle, showSearch }) => {
     if (!editor) return null;
 
@@ -223,52 +244,6 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
         localStorage.setItem('blocktex_editor_zoom', fontSize.toString());
     }, [fontSize]);
 
-    // Busca de ocorrências no texto
-    const findMatches = (doc, term) => {
-        const matches = [];
-        if (!term) return matches;
-        doc.descendants((node, pos) => {
-            if (node.isText) {
-                const text = node.text;
-                const escapedTerm = term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-                const regex = new RegExp(escapedTerm, 'gi');
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                    matches.push({
-                        start: pos + match.index,
-                        end: pos + match.index + match[0].length
-                    });
-                }
-            }
-        });
-        return matches;
-    };
-
-    const matches = editor ? findMatches(editor.state.doc, searchTerm) : [];
-
-    const scrollToMatch = (index) => {
-        if (!editor || !matches[index]) return;
-        const match = matches[index];
-        const { tr } = editor.state;
-        const selection = TextSelection.create(editor.state.doc, match.start, match.end);
-        tr.setSelection(selection).scrollIntoView();
-        editor.view.dispatch(tr);
-    };
-
-    const handleNextMatch = () => {
-        if (matches.length === 0) return;
-        const nextIndex = (currentMatchIndex + 1) % matches.length;
-        setCurrentMatchIndex(nextIndex);
-        scrollToMatch(nextIndex);
-    };
-
-    const handlePrevMatch = () => {
-        if (matches.length === 0) return;
-        const prevIndex = (currentMatchIndex - 1 + matches.length) % matches.length;
-        setCurrentMatchIndex(prevIndex);
-        scrollToMatch(prevIndex);
-    };
-
     // Salva a posição de rolagem quando o usuário rola o editor
     const handleScroll = (e) => {
         if (block?.id) {
@@ -375,6 +350,31 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
             }
         },
     });
+
+    const matches = (editor && editor.state) ? findMatches(editor.state.doc, searchTerm) : [];
+
+    const scrollToMatch = (index) => {
+        if (!editor || !editor.state || !matches[index]) return;
+        const match = matches[index];
+        const { tr } = editor.state;
+        const selection = TextSelection.create(editor.state.doc, match.start, match.end);
+        tr.setSelection(selection).scrollIntoView();
+        editor.view.dispatch(tr);
+    };
+
+    const handleNextMatch = () => {
+        if (matches.length === 0) return;
+        const nextIndex = (currentMatchIndex + 1) % matches.length;
+        setCurrentMatchIndex(nextIndex);
+        scrollToMatch(nextIndex);
+    };
+
+    const handlePrevMatch = () => {
+        if (matches.length === 0) return;
+        const prevIndex = (currentMatchIndex - 1 + matches.length) % matches.length;
+        setCurrentMatchIndex(prevIndex);
+        scrollToMatch(prevIndex);
+    };
 
     // Re-inject content when switching blocks if the editor instance survived
     useEffect(() => {
