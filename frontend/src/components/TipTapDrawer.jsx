@@ -419,6 +419,7 @@ function AIPanel({ editor, block }) {
     const rawMd = editor.storage.markdown.getMarkdown();
     const wordCount = rawMd.split(/\s+/).filter(Boolean).length;
     const charCount = rawMd.length;
+    const estimatedPages = wordCount > 0 ? (wordCount / 250).toFixed(1) : "0.0";
 
     return (
         <div className="ai-assistant-panel" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -568,6 +569,11 @@ function AIPanel({ editor, block }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
                         <span>Total de Caracteres:</span>
                         <strong style={{ color: 'var(--text-primary)' }}>{charCount}</strong>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+                        <span title="Projeção para formato A5 médio (~250 palavras por página)">Páginas Estimadas:</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>~{estimatedPages} {estimatedPages === "1.0" ? 'pág' : 'págs'}</strong>
                     </div>
 
                     <div style={{ marginTop: '6px' }}>
