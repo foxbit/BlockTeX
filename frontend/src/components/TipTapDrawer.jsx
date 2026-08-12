@@ -8,7 +8,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import { diffWords } from 'diff';
 import { useBackend } from '../hooks/useBackend.js';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { TextSelection } from '@tiptap/pm/state';
+import { TextSelection, PluginKey } from '@tiptap/pm/state';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
@@ -17,6 +17,9 @@ import { TableHeader } from '@tiptap/extension-table-header';
 // Sanitiza a saída Markdown do TipTap, removendo entidades HTML
 // que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
 // Isso mantém o conteúdo armazenado como Markdown puro.
+const textBubbleMenuKey = new PluginKey('textBubbleMenu');
+const tableBubbleMenuKey = new PluginKey('tableBubbleMenu');
+
 function sanitizeMarkdown(md) {
     return md
         .replace(/&gt;/g, '>')
@@ -590,6 +593,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                     <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                         {editor && (
                             <BubbleMenu
+                                pluginKey={textBubbleMenuKey}
                                 className="bubble-menu"
                                 editor={editor}
                                 tippyOptions={{ duration: 100 }}
@@ -634,6 +638,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                         )}
                         {editor && (
                             <BubbleMenu
+                                pluginKey={tableBubbleMenuKey}
                                 className="bubble-menu table-bubble-menu"
                                 editor={editor}
                                 tippyOptions={{ duration: 100 }}
