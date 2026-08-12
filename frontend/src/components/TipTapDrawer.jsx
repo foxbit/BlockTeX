@@ -189,15 +189,28 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [content, setContent] = useState('');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [fontSize, setFontSize] = useState(15);
+    const [lastSaveInfo, setLastSaveInfo] = useState({ time: null, type: null });
 
     const handleZoomIn = () => setFontSize(prev => Math.min(prev + 1, 30));
     const handleZoomOut = () => setFontSize(prev => Math.max(prev - 1, 12));
+
+    // Auto-save debounced effect (5 seconds without editing)
+    useEffect(() => {
+        if (!hasUnsavedChanges) return;
+
+        const timer = setTimeout(() => {
+            handleSave('automático');
+        }, 5000);
+
+        return () => clearTimeout(timer);
+    }, [content, hasUnsavedChanges]);
 
     // Sync state when drawer opens with a specific block
     useEffect(() => {
         if (open && block) {
             setContent(block.content || '');
             setHasUnsavedChanges(false);
+            setLastSaveInfo({ time: null, type: null });
         }
     }, [open, block?.id]);
 
@@ -235,9 +248,12 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
 
     if (!block) return null;
 
-    const handleSave = () => {
+    const handleSave = (type = 'manual') => {
         onSave(block.id, content);
         setHasUnsavedChanges(false);
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLastSaveInfo({ time: timeStr, type });
     };
 
     const handleImportMarkdown = (e) => {
@@ -274,13 +290,23 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
             {/* Drawer Container */}
             <div className={`drawer-container ${open ? 'open' : ''}`}>
                 <div className="drawer-header">
-                    <div className="drawer-title">
-                        <span style={{ color: 'var(--text-accent)' }}>TipTap Editor</span>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '8px' }}>Bloco #{block.id.split('-')[0]}</span>
-                        {hasUnsavedChanges && <span style={{ color: 'var(--accent-amber)', fontSize: '11px', marginLeft: '8px' }}>• Não salvo</span>}
+                    <div className="drawer-title" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: 'var(--text-accent)' }}>TipTap Editor</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Bloco #{block.id.split('-')[0]}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {hasUnsavedChanges ? (
+                                <span style={{ color: 'var(--accent-amber)' }}>● Não salvo (editando...)</span>
+                            ) : (
+                                <span style={{ color: 'var(--accent-green)' }}>
+                                    ● Salvo {lastSaveInfo.time && `(${lastSaveInfo.type} às ${lastSaveInfo.time})`}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="drawer-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <button className="btn btn-primary" onClick={handleSave} disabled={!hasUnsavedChanges}>Salvar</button>
+                        <button className="btn btn-primary" onClick={() => handleSave('manual')} disabled={!hasUnsavedChanges}>Salvar</button>
                         <button 
                             className="btn btn-ghost" 
                             onClick={onClose}
