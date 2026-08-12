@@ -525,7 +525,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\usepackage[utf8]{inputenc}',
         '\\usepackage[T1]{fontenc}',
         '\\usepackage[brazilian]{babel}',
-        '\\shorthandoff{"}',
+        '\\AtBeginDocument{\\shorthandoff{"}}',
         '',
         '% ─── Typography ─────────────────────────────────────',
         fontPkg.trim() || '% (fonte padrão LaTeX)',
