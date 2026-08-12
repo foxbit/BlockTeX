@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import { Node, mergeAttributes } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
@@ -19,6 +20,145 @@ import { TableHeader } from '@tiptap/extension-table-header';
 // Isso mantém o conteúdo armazenado como Markdown puro.
 const textBubbleMenuKey = new PluginKey('textBubbleMenu');
 const tableBubbleMenuKey = new PluginKey('tableBubbleMenu');
+
+function FlagNodeView({ node, updateAttributes, deleteNode }) {
+    const { color, title } = node.attrs;
+    const [isHovered, setIsHovered] = useState(false);
+
+    const colors = {
+        red: '#ef4444',
+        yellow: '#eab308',
+        green: '#22c55e',
+        blue: '#3b82f6',
+        purple: '#a855f7',
+        indigo: '#6366f1'
+    };
+
+    const activeColor = colors[color] || colors.indigo;
+
+    return (
+        <NodeViewWrapper
+            className="virtual-flag-wrapper"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            style={{
+                position: 'relative',
+                margin: '24px 0',
+                display: 'flex',
+                alignItems: 'center',
+                userSelect: 'none'
+            }}
+        >
+            <div style={{ flex: 1, height: '2px', background: activeColor, opacity: 0.6 }} />
+            
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'var(--bg-elevated)',
+                border: `1px solid ${activeColor}`,
+                borderRadius: '20px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                color: 'var(--text-primary)',
+                zIndex: 2,
+                boxShadow: 'var(--shadow-sm)'
+            }}>
+                <span style={{ fontSize: '12px' }}>🚩</span>
+                <input
+                    type="text"
+                    placeholder="Nota de revisão..."
+                    value={title}
+                    onChange={(e) => updateAttributes({ title: e.target.value })}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: 'var(--text-primary)',
+                        fontSize: '11px',
+                        width: '180px'
+                    }}
+                />
+            </div>
+
+            <div style={{ flex: 1, height: '2px', background: activeColor, opacity: 0.6 }} />
+
+            {isHovered && (
+                <button
+                    onClick={deleteNode}
+                    style={{
+                        position: 'absolute',
+                        right: '0',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'var(--accent-rose)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        fontSize: '9px',
+                        zIndex: 10
+                    }}
+                    title="Remover Marcação"
+                    type="button"
+                >
+                    ✕
+                </button>
+            )}
+        </NodeViewWrapper>
+    );
+}
+
+const VirtualFlag = Node.create({
+    name: 'virtualFlag',
+    group: 'block',
+    atom: true,
+
+    addAttributes() {
+        return {
+            color: {
+                default: 'indigo',
+            },
+            title: {
+                default: '',
+            },
+        };
+    },
+
+    parseHTML() {
+        return [
+            {
+                tag: 'div[data-type="virtual-flag"]',
+            },
+        ];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'virtual-flag' })];
+    },
+
+    addNodeView() {
+        return ReactNodeViewRenderer(FlagNodeView);
+    },
+
+    addCommands() {
+        return {
+            insertFlag: (options) => ({ chain }) => {
+                return chain()
+                    .insertContent({
+                        type: this.name,
+                        attrs: options,
+                    })
+                    .run();
+            },
+        };
+    },
+});
 
 function sanitizeMarkdown(md) {
     return md
@@ -180,6 +320,65 @@ const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize, onSearc
 
             <div className="toolbar-sep" />
 
+            <div className="toolbar-group" style={{ position: 'relative' }}>
+                <button
+                    onClick={() => setShowFlagSelector(prev => !prev)}
+                    className={`toolbar-btn ${showFlagSelector ? 'is-active' : ''}`}
+                    title="Adicionar Marcação/Flag"
+                    style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px' }}
+                >
+                    🚩 Flag
+                </button>
+                {showFlagSelector && (
+                    <div
+                        className="flag-color-popover"
+                        style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            marginTop: '4px',
+                            background: 'var(--bg-elevated)',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-md)',
+                            boxShadow: 'var(--shadow-md)',
+                            padding: '6px',
+                            display: 'flex',
+                            gap: '4px',
+                            zIndex: 100
+                        }}
+                    >
+                        {[
+                            { name: 'Vermelho', key: 'red', color: '#ef4444' },
+                            { name: 'Amarelo', key: 'yellow', color: '#eab308' },
+                            { name: 'Verde', key: 'green', color: '#22c55e' },
+                            { name: 'Azul', key: 'blue', color: '#3b82f6' },
+                            { name: 'Roxo', key: 'purple', color: '#a855f7' },
+                            { name: 'Índigo', key: 'indigo', color: '#6366f1' }
+                        ].map(c => (
+                            <button
+                                key={c.key}
+                                onClick={() => {
+                                    editor.chain().focus().insertFlag({ color: c.key }).run();
+                                    setShowFlagSelector(false);
+                                }}
+                                style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    background: c.color,
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                                title={c.name}
+                                type="button"
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="toolbar-sep" />
+
             <div className="toolbar-group">
                 <button
                     onClick={onZoomOut}
@@ -244,6 +443,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [showSearch, setShowSearch] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+    const [showFlagSelector, setShowFlagSelector] = useState(false);
 
     const searchTermRef = useRef(searchTerm);
     const currentMatchIndexRef = useRef(currentMatchIndex);
@@ -303,7 +503,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                 types: ['heading', 'paragraph'],
             }),
             Markdown.configure({
-                html: false,
+                html: true,
                 transformPastedText: true,
             }),
             Table.configure({
@@ -312,6 +512,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
             TableRow,
             TableHeader,
             TableCell,
+            VirtualFlag,
         ],
         content: block?.content || '',
         onUpdate: ({ editor }) => {

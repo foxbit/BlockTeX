@@ -217,7 +217,9 @@ function listToLatex(lines, baseIndent = 0) {
 // ============================================================
 function mdToLatex(md, config = {}) {
     if (!md) return '';
-    const lines = md.split('\n');
+    // Remove as tags div das marcações virtuais (flags) para que não apareçam no PDF
+    const cleanMd = md.replace(/<div[^>]*data-type="virtual-flag"[\s\S]*?>[\s\S]*?<\/div>/g, '');
+    const lines = cleanMd.split('\n');
     const output = [];
     let i = 0;
 
