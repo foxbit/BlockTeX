@@ -8,6 +8,10 @@ import { diffWords } from 'diff';
 import { useBackend } from '../hooks/useBackend.js';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { TextSelection } from '@tiptap/pm/state';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 
 // Sanitiza a saída Markdown do TipTap, removendo entidades HTML
 // que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
@@ -297,6 +301,12 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                 html: false,
                 transformPastedText: true,
             }),
+            Table.configure({
+                resizable: true,
+            }),
+            TableRow,
+            TableHeader,
+            TableCell,
         ],
         content: block?.content || '',
         onUpdate: ({ editor }) => {
