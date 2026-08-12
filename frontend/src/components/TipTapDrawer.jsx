@@ -236,6 +236,24 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
+    const searchTermRef = useRef(searchTerm);
+    const currentMatchIndexRef = useRef(currentMatchIndex);
+
+    // Sincroniza referências com o estado e dispara transações de atualização visual
+    useEffect(() => {
+        searchTermRef.current = searchTerm;
+        if (editor) {
+            editor.view.dispatch(editor.state.tr);
+        }
+    }, [searchTerm, editor]);
+
+    useEffect(() => {
+        currentMatchIndexRef.current = currentMatchIndex;
+        if (editor) {
+            editor.view.dispatch(editor.state.tr);
+        }
+    }, [currentMatchIndex, editor]);
+
     const handleZoomIn = () => setFontSize(prev => Math.min(prev + 1, 30));
     const handleZoomOut = () => setFontSize(prev => Math.max(prev - 1, 12));
 
@@ -313,19 +331,22 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                 const isFocused = document.activeElement && document.activeElement.closest('.ProseMirror');
                 const decs = [];
 
-                // 1. Renderiza realce de busca
-                if (searchTerm) {
+                // 1. Renderiza realce de busca usando os valores mais recentes das refs
+                const currentTerm = searchTermRef.current;
+                const activeIndex = currentMatchIndexRef.current;
+
+                if (currentTerm) {
                     let matchIdx = 0;
                     state.doc.descendants((node, pos) => {
                         if (node.isText) {
                             const text = node.text;
-                            const escapedTerm = searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                            const escapedTerm = currentTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
                             const regex = new RegExp(escapedTerm, 'gi');
                             let match;
                             while ((match = regex.exec(text)) !== null) {
                                 const start = pos + match.index;
                                 const end = start + match[0].length;
-                                const isCurrent = (matchIdx === currentMatchIndex);
+                                const isCurrent = (matchIdx === activeIndex);
                                 decs.push(
                                     Decoration.inline(start, end, {
                                         class: isCurrent ? 'tiptap-search-match-active' : 'tiptap-search-match'
@@ -358,8 +379,26 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
         const match = matches[index];
         const { tr } = editor.state;
         const selection = TextSelection.create(editor.state.doc, match.start, match.end);
-        tr.setSelection(selection).scrollIntoView();
+        
+        // Atualiza a seleção e foca no editor para destacar nativamente
+        tr.setSelection(selection);
         editor.view.dispatch(tr);
+        editor.commands.focus();
+
+        // Rolagem suave no DOM até o elemento pai do nó de texto correspondente
+        setTimeout(() => {
+            try {
+                const resolved = editor.view.domAtPos(match.start);
+                if (resolved && resolved.node) {
+                    const el = resolved.node.nodeType === Node.TEXT_NODE ? resolved.node.parentElement : resolved.node;
+                    if (el && typeof el.scrollIntoView === 'function') {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            } catch (err) {
+                console.warn('Erro ao rolar para o termo buscado:', err);
+            }
+        }, 30);
     };
 
     const handleNextMatch = () => {
