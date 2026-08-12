@@ -235,6 +235,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     });
     const [lastSaveInfo, setLastSaveInfo] = useState({ time: null, type: null });
     const scrollContainerRef = useRef(null);
+    const [selectionTick, setSelectionTick] = useState(0);
 
     // Estados da busca
     const [showSearch, setShowSearch] = useState(false);
@@ -314,6 +315,10 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
             const markdownOutput = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
             setContent(markdownOutput);
             setHasUnsavedChanges(true);
+        },
+        onSelectionUpdate: () => {
+            // Força a re-renderização do React para atualizar os estados ativos (highlight) dos botões de formatação
+            setSelectionTick(prev => prev + 1);
         },
         onFocus: ({ editor }) => {
             // Força a reavaliação de decorações do ProseMirror ao focar
