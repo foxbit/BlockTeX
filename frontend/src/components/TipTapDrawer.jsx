@@ -19,7 +19,7 @@ function sanitizeMarkdown(md) {
         .replace(/&apos;/g, "'");
 }
 
-const MenuBar = ({ editor, onImportClick }) => {
+const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize }) => {
     if (!editor) return null;
 
     return (
@@ -147,6 +147,30 @@ const MenuBar = ({ editor, onImportClick }) => {
                 </button>
             </div>
 
+            <div className="toolbar-sep" />
+
+            <div className="toolbar-group">
+                <button
+                    onClick={onZoomOut}
+                    className="toolbar-btn"
+                    title="Diminuir Zoom da Letra (A-)"
+                    style={{ fontSize: '11px', fontWeight: 600 }}
+                >
+                    A-
+                </button>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '0 4px', minWidth: '35px', textAlign: 'center' }}>
+                    {fontSize}px
+                </span>
+                <button
+                    onClick={onZoomIn}
+                    className="toolbar-btn"
+                    title="Aumentar Zoom da Letra (A+)"
+                    style={{ fontSize: '11px', fontWeight: 600 }}
+                >
+                    A+
+                </button>
+            </div>
+
             <div style={{ flex: 1 }} />
 
             <div className="toolbar-group">
@@ -164,6 +188,10 @@ const MenuBar = ({ editor, onImportClick }) => {
 export function TipTapDrawer({ block, open, onClose, onSave }) {
     const [content, setContent] = useState('');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [fontSize, setFontSize] = useState(15);
+
+    const handleZoomIn = () => setFontSize(prev => Math.min(prev + 1, 30));
+    const handleZoomOut = () => setFontSize(prev => Math.max(prev - 1, 12));
 
     // Sync state when drawer opens with a specific block
     useEffect(() => {
@@ -258,9 +286,15 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
                     </div>
                 </div>
 
-                <MenuBar editor={editor} onImportClick={() => document.getElementById('import-markdown-file').click()} />
+                <MenuBar 
+                    editor={editor} 
+                    onImportClick={() => document.getElementById('import-markdown-file').click()} 
+                    onZoomIn={handleZoomIn}
+                    onZoomOut={handleZoomOut}
+                    fontSize={fontSize}
+                />
 
-                <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden' }}>
+                <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', '--editor-zoom-level': `${fontSize}px` }}>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                         <EditorContent editor={editor} className="tiptap-editor-area" />
                     </div>
@@ -273,6 +307,7 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
 
 function AIPanel({ editor, block }) {
     const { transformText, getAISettings } = useBackend();
+    const [activeTab, setActiveTab] = useState('ai');
     const [prompt, setPrompt] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -381,90 +416,168 @@ function AIPanel({ editor, block }) {
 
     const differences = showDiff ? diffWords(originalText, suggestedText) : [];
 
+    const rawMd = editor.storage.markdown.getMarkdown();
+    const wordCount = rawMd.split(/\s+/).filter(Boolean).length;
+    const charCount = rawMd.length;
+
     return (
-        <div className="ai-assistant-panel">
-            <h3 className="ai-panel-title">🪄 Assistente de Escrita IA</h3>
-            
-            {!hasApiKey && (
-                <div style={{ background: '#f43f5e1c', color: '#f43f5e', border: '1px solid #f43f5e3b', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '11px', marginBottom: '16px', lineHeight: 1.4 }}>
-                    ⚠️ Chave API da OpenCode não configurada no servidor. Configure o arquivo `.env` para usar a IA.
-                </div>
-            )}
+        <div className="ai-assistant-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="sidebar-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', marginBottom: '16px', gap: '4px' }}>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('ai')}
+                    style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: activeTab === 'ai' ? '2px solid var(--accent-indigo)' : '2px solid transparent',
+                        color: activeTab === 'ai' ? 'var(--text-accent)' : 'var(--text-muted)',
+                        fontWeight: activeTab === 'ai' ? 600 : 'normal',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        textAlign: 'center',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    🪄 Assistente IA
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('info')}
+                    style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: activeTab === 'info' ? '2px solid var(--accent-indigo)' : '2px solid transparent',
+                        color: activeTab === 'info' ? 'var(--text-accent)' : 'var(--text-muted)',
+                        fontWeight: activeTab === 'info' ? 600 : 'normal',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        textAlign: 'center',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    ℹ️ Info do Bloco
+                </button>
+            </div>
 
-            {!showDiff ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {selectionText ? (
-                            <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(139, 92, 246, 0.2)', marginBottom: '4px', lineHeight: 1.4 }}>
-                                <span style={{ fontWeight: 600, display: 'block', marginBottom: '2px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>✨ Trecho Selecionado</span>
-                                "{selectionText.length > 90 ? selectionText.substring(0, 90) + '...' : selectionText}"
-                            </div>
-                        ) : (
-                            "Selecione um trecho de texto no editor ao lado ou deixe em branco para atuar em todo o bloco."
-                        )}
-                    </div>
-
-                    <div className="presets-container">
-                        {PRESETS.map((p, i) => (
-                            <button 
-                                key={i} 
-                                type="button" 
-                                className="btn btn-ghost" 
-                                style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}
-                                onClick={() => applyPreset(p.text)}
-                                disabled={!hasApiKey}
-                            >
-                                {p.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <textarea
-                        className="form-input"
-                        style={{ height: '80px', fontSize: '12px', fontFamily: 'inherit', resize: 'none' }}
-                        placeholder="O que a IA deve fazer com o texto? (Ex: Reescreva de forma mais formal)"
-                        value={prompt}
-                        onChange={e => setPrompt(e.target.value)}
-                        disabled={loading || !hasApiKey}
-                    />
-
-                    {error && (
-                        <div style={{ color: 'var(--accent-rose)', fontSize: '11px', whiteSpace: 'pre-wrap' }}>
-                            {error}
+            {activeTab === 'ai' ? (
+                <>
+                    <h3 className="ai-panel-title" style={{ marginTop: 0 }}>🪄 Assistente de Escrita IA</h3>
+                    
+                    {!hasApiKey && (
+                        <div style={{ background: '#f43f5e1c', color: '#f43f5e', border: '1px solid #f43f5e3b', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '11px', marginBottom: '16px', lineHeight: 1.4 }}>
+                            ⚠️ Chave API da OpenCode não configurada no servidor. Configure o arquivo `.env` para usar a IA.
                         </div>
                     )}
 
-                    <button
-                        type="button"
-                        className="btn btn-primary"
-                        style={{ background: 'linear-gradient(135deg, var(--accent-indigo), var(--accent-violet))', color: 'white' }}
-                        onClick={handleGenerate}
-                        disabled={loading || !prompt.trim() || !hasApiKey}
-                    >
-                        {loading ? 'Processando...' : 'Reescrever com IA →'}
-                    </button>
-                </div>
+                    {!showDiff ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {selectionText ? (
+                                    <div style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(139, 92, 246, 0.2)', marginBottom: '4px', lineHeight: 1.4 }}>
+                                        <span style={{ fontWeight: 600, display: 'block', marginBottom: '2px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>✨ Trecho Selecionado</span>
+                                        "{selectionText.length > 90 ? selectionText.substring(0, 90) + '...' : selectionText}"
+                                    </div>
+                                ) : (
+                                    "Selecione um trecho de texto no editor ao lado ou deixe em branco para atuar em todo o bloco."
+                                )}
+                            </div>
+
+                            <div className="presets-container">
+                                {PRESETS.map((p, i) => (
+                                    <button 
+                                        key={i} 
+                                        type="button" 
+                                        className="btn btn-ghost" 
+                                        style={{ fontSize: '11px', padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}
+                                        onClick={() => applyPreset(p.text)}
+                                        disabled={!hasApiKey}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <textarea
+                                className="form-input"
+                                style={{ height: '80px', fontSize: '12px', fontFamily: 'inherit', resize: 'none' }}
+                                placeholder="O que a IA deve fazer com o texto? (Ex: Reescreva de forma mais formal)"
+                                value={prompt}
+                                onChange={e => setPrompt(e.target.value)}
+                                disabled={loading || !hasApiKey}
+                            />
+
+                            {error && (
+                                <div style={{ color: 'var(--accent-rose)', fontSize: '11px', whiteSpace: 'pre-wrap' }}>
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ background: 'linear-gradient(135deg, var(--accent-indigo), var(--accent-violet))', color: 'white' }}
+                                onClick={handleGenerate}
+                                disabled={loading || !prompt.trim() || !hasApiKey}
+                            >
+                                {loading ? 'Processando...' : 'Reescrever com IA →'}
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-accent)' }}>
+                                {isSelection ? 'Alterações na seleção:' : 'Alterações no bloco inteiro:'}
+                            </div>
+
+                            <div className="diff-viewer">
+                                {differences.map((part, index) => {
+                                    if (part.added) return <ins key={index} className="diff-added">{part.value}</ins>;
+                                    if (part.removed) return <del key={index} className="diff-removed">{part.value}</del>;
+                                    return <span key={index}>{part.value}</span>;
+                                })}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={handleDiscard}>
+                                    Descartar
+                                </button>
+                                <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={handleApply}>
+                                    Aceitar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-accent)' }}>
-                        {isSelection ? 'Alterações na seleção:' : 'Alterações no bloco inteiro:'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    <h3 className="ai-panel-title" style={{ marginTop: 0 }}>ℹ️ Detalhes do Bloco</h3>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+                        <span>Tipo de Bloco:</span>
+                        <span className="tag tag-violet" style={{ textTransform: 'capitalize', fontSize: '10px', padding: '2px 6px' }}>{block.type}</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+                        <span>Total de Palavras:</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{wordCount}</strong>
                     </div>
 
-                    <div className="diff-viewer">
-                        {differences.map((part, index) => {
-                            if (part.added) return <ins key={index} className="diff-added">{part.value}</ins>;
-                            if (part.removed) return <del key={index} className="diff-removed">{part.value}</del>;
-                            return <span key={index}>{part.value}</span>;
-                        })}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+                        <span>Total de Caracteres:</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{charCount}</strong>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={handleDiscard}>
-                            Descartar
-                        </button>
-                        <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={handleApply}>
-                            Aceitar
-                        </button>
+                    <div style={{ marginTop: '6px' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px', fontSize: '11px' }}>Dicas de Formatação:</span>
+                        <ul style={{ paddingLeft: '16px', margin: 0, lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                            <li>Use <strong>**Negrito**</strong> para destacar termos importantes.</li>
+                            <li>Use <em>*Itálico*</em> para estrangeirismos ou ênfase.</li>
+                            <li>Títulos (H1, H2, H3) serão refletidos no Índice Automático do livro se ativados no Inspector.</li>
+                            <li>O conversor do BlockTeX limpa automaticamente entidades HTML como emojis, garantindo compilação LaTeX sem erros.</li>
+                        </ul>
                     </div>
                 </div>
             )}

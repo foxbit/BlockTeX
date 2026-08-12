@@ -22,9 +22,9 @@
     top: 0;
     right: 0;
     bottom: 0;
-    width: 65vw;
+    width: 80vw;
     min-width: 600px;
-    max-width: 1050px;
+    max-width: 1350px;
     background: var(--bg-primary);
     box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
     z-index: 1000;
@@ -134,7 +134,7 @@
     outline: none;
     color: var(--text-primary);
     font-family: var(--font-sans);
-    font-size: 15px;
+    font-size: var(--editor-zoom-level, 15px);
     line-height: 1.7;
 }
 
