@@ -158,6 +158,18 @@ npm run dev
 - **Salvar/Abrir** projetos `.btx`
 - **Atalhos de teclado**: Ctrl+Enter (compilar), Ctrl+S (salvar), Ctrl+P (preview)
 - **Painel Lateral Clean**: Aba LaTeX removida para focar inteiramente na produtividade. Inspector simplificado contendo apenas a aba **Bloco** (primeira aba com foco principal) e aba **Documento**.
+- **Importação de Markdown**: Botão `📥 Importar MD` adicionado à barra de ferramentas do editor TipTap para carregar e preencher os blocos instantaneamente a partir de arquivos `.md` ou `.txt` locais.
+
+### Assistente de Escrita por IA (OpenCode)
+- **Integração com OpenCode Go**: Conecte sua assinatura do gateway OpenCode para usar modelos de IA como o **DeepSeek V4 Flash** (`deepseek-v4-flash`).
+- **Painel de Controle Lateral (AIPanel)**: Integrado diretamente à gaveta de edição de blocos (Capítulos e Conteúdos).
+- **Ações Inteligentes**:
+  - **Presets de Edição**: Melhorar escrita, Corrigir gramática, Traduzir para inglês, Resumir e Expandir texto com um clique.
+  - **Prompt Livre**: Digite instruções personalizadas para a IA atuar sobre o seu texto.
+- **Foco Seletivo**: Digite o prompt para o bloco inteiro ou selecione um trecho específico do texto no editor para atuar apenas sobre a seleção (com visualizador em tempo real no painel).
+- **Visualizador de Diferenças (Diff)**: Exibição visual colorida contrastante das adições (verde) e remoções (vermelho) propostas pela IA antes de aceitar ou descartar as alterações.
+- **Configuração Segura**: Chave de API configurada no arquivo `.env` local do servidor, preservando a segurança das suas credenciais.
+
 
 ---
 
