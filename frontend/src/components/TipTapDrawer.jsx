@@ -589,7 +589,15 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                 <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', '--editor-zoom-level': `${fontSize}px` }}>
                     <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                         {editor && (
-                            <BubbleMenu className="bubble-menu" editor={editor} tippyOptions={{ duration: 100 }}>
+                            <BubbleMenu
+                                className="bubble-menu"
+                                editor={editor}
+                                tippyOptions={{ duration: 100 }}
+                                shouldShow={({ editor, from, to }) => {
+                                    // Mostra menu de texto se houver seleção de caracteres E não estiver dentro de uma tabela
+                                    return from !== to && !editor.isActive('table');
+                                }}
+                            >
                                 <button
                                     onClick={() => editor.chain().focus().toggleBold().run()}
                                     className={editor.isActive('bold') ? 'is-active' : ''}
@@ -621,6 +629,41 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                                     title="Tachado"
                                 >
                                     <s>S</s>
+                                </button>
+                            </BubbleMenu>
+                        )}
+                        {editor && (
+                            <BubbleMenu
+                                className="bubble-menu table-bubble-menu"
+                                editor={editor}
+                                tippyOptions={{ duration: 100 }}
+                                shouldShow={({ editor }) => {
+                                    // Mostra menu de tabelas apenas se o cursor estiver ativo dentro de uma célula
+                                    return editor.isActive('table');
+                                }}
+                            >
+                                <button onClick={() => editor.chain().focus().addColumnBefore().run()} type="button" title="Inserir Coluna à Esquerda">
+                                    ➕🔲
+                                </button>
+                                <button onClick={() => editor.chain().focus().addColumnAfter().run()} type="button" title="Inserir Coluna à Direita">
+                                    🔲➕
+                                </button>
+                                <button onClick={() => editor.chain().focus().deleteColumn().run()} type="button" title="Excluir Coluna" style={{ color: 'var(--accent-rose)' }}>
+                                    🗑️🔲
+                                </button>
+                                <div style={{ width: '1px', background: 'var(--border-default)', margin: '4px 2px' }} />
+                                <button onClick={() => editor.chain().focus().addRowBefore().run()} type="button" title="Inserir Linha Acima">
+                                    ➕➖
+                                </button>
+                                <button onClick={() => editor.chain().focus().addRowAfter().run()} type="button" title="Inserir Linha Abaixo">
+                                    ➖➕
+                                </button>
+                                <button onClick={() => editor.chain().focus().deleteRow().run()} type="button" title="Excluir Linha" style={{ color: 'var(--accent-rose)' }}>
+                                    🗑️➖
+                                </button>
+                                <div style={{ width: '1px', background: 'var(--border-default)', margin: '4px 2px' }} />
+                                <button onClick={() => editor.chain().focus().deleteTable().run()} type="button" title="Excluir Tabela Inteira" style={{ color: 'var(--accent-rose)', fontWeight: 'bold' }}>
+                                    🗑️ Tabela
                                 </button>
                             </BubbleMenu>
                         )}
