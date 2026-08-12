@@ -55,10 +55,18 @@ export function BlockCard({
         setDragOver(null);
     }, [block.id, dragOver, onDrop]);
 
+    const getBlockH1 = () => {
+        const text = block.content || '';
+        const match = text.match(/^#\s+(.+)$/m);
+        return match ? match[1].replace(/[*_`]/g, '').trim() : null;
+    };
+
     const getContentPreview = () => {
         const text = block.content || '';
-        const preview = text.replace(/^#+ /gm, '').replace(/[*_`]/g, '').replace(/\n/g, ' ');
-        return preview.substring(0, 80) + (preview.length > 80 ? '…' : '');
+        const hasH1 = /^#\s+(.+)$/m.test(text);
+        const cleanedText = hasH1 ? text.replace(/^#\s+.+$/m, '') : text;
+        const preview = cleanedText.replace(/[*_`]/g, '').replace(/\n/g, ' ').trim();
+        return preview.substring(0, 100) + (preview.length > 100 ? '…' : '');
     };
 
     return (
@@ -298,7 +306,14 @@ export function BlockCard({
                         ) : (
                             <div className="block-content-summary" onClick={() => onEditContent(block.id)}>
                                 <div className="summary-preview">
-                                    {getContentPreview() || 'Bloco vazio. Clique para escrever.'}
+                                    {getBlockH1() && (
+                                        <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-accent)', marginBottom: '4px' }}>
+                                            {getBlockH1()}
+                                        </div>
+                                    )}
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                        {getContentPreview() || 'Bloco vazio. Clique para escrever.'}
+                                    </div>
                                 </div>
                                 <div className="summary-stats">
                                     <span className="stat-pill" title="Contagem de palavras">
