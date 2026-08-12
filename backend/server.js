@@ -420,7 +420,7 @@ app.post('/api/ai/transform', authenticate, async (req, res) => {
             });
         }
 
-        const baseUrl = (process.env.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1').trim();
+        const baseUrl = (process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1').trim();
         const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-flash';
 
         const response = await fetch(`${baseUrl}/chat/completions`, {
