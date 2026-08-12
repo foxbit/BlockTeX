@@ -75,7 +75,11 @@ function tableToLatex(tableText) {
         return 'l';
     });
 
-    const colSpec = aligns.join('|');
+    const colSpec = aligns.map(a => {
+        if (a === 'c') return '>{\\centering\\arraybackslash}X';
+        if (a === 'r') return '>{\\raggedleft\\arraybackslash}X';
+        return '>{\\raggedright\\arraybackslash}X';
+    }).join('|');
     const headerRow = headers.map(h => inlineToLatex(h)).join(' & ');
     const bodyRows = rows.map(r =>
         r.map((c, i) => inlineToLatex(c || '')).join(' & ')
@@ -84,13 +88,13 @@ function tableToLatex(tableText) {
     return [
         `\\begin{table}[H]`,
         `  \\centering`,
-        `  \\begin{tabular}{|${colSpec}|}`,
+        `  \\begin{tabularx}{\\textwidth}{|${colSpec}|}`,
         `    \\hline`,
         `    ${headerRow} \\\\`,
         `    \\hline`,
         bodyRows ? `    ${bodyRows} \\\\` : '',
         `    \\hline`,
-        `  \\end{tabular}`,
+        `  \\end{tabularx}`,
         `\\end{table}`,
     ].filter(Boolean).join('\n');
 }
@@ -550,6 +554,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\usepackage{booktabs}',
         '\\usepackage{array}',
         '\\usepackage{longtable}',
+        '\\usepackage{tabularx}',
         '',
         '% ─── Colors ─────────────────────────────────────────',
         '\\usepackage{xcolor}',
