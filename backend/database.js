@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const dbDir = path.join(os.homedir(), 'BlockTeX_Data');
+const dbDir = process.env.DATABASE_DIR || path.join(os.homedir(), 'BlockTeX_Data');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 const dbPath = path.join(dbDir, 'database.sqlite');
