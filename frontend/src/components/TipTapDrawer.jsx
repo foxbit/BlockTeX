@@ -19,7 +19,7 @@ function sanitizeMarkdown(md) {
         .replace(/&apos;/g, "'");
 }
 
-const MenuBar = ({ editor }) => {
+const MenuBar = ({ editor, onImportClick }) => {
     if (!editor) return null;
 
     return (
@@ -134,6 +134,19 @@ const MenuBar = ({ editor }) => {
                 </button>
             </div>
 
+            <div className="toolbar-sep" />
+
+            <div className="toolbar-group">
+                <button
+                    onClick={onImportClick}
+                    className="toolbar-btn"
+                    title="Importar Arquivo Markdown"
+                    style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', fontWeight: 'normal' }}
+                >
+                    📥 Importar MD
+                </button>
+            </div>
+
             <div style={{ flex: 1 }} />
 
             <div className="toolbar-group">
@@ -200,8 +213,31 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
         onClose();
     };
 
+    const handleImportMarkdown = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            if (editor) {
+                editor.commands.setContent(text);
+                setHasUnsavedChanges(true);
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset so the same file can be selected again
+    };
+
     return (
         <>
+            <input
+                type="file"
+                id="import-markdown-file"
+                accept=".md,.txt"
+                style={{ display: 'none' }}
+                onChange={handleImportMarkdown}
+            />
             {/* Backdrop overlay */}
             <div
                 className={`drawer-backdrop ${open ? 'open' : ''}`}
@@ -222,7 +258,7 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
                     </div>
                 </div>
 
-                <MenuBar editor={editor} />
+                <MenuBar editor={editor} onImportClick={() => document.getElementById('import-markdown-file').click()} />
 
                 <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden' }}>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
@@ -258,7 +294,7 @@ function AIPanel({ editor, block }) {
         checkConfig();
     }, [getAISettings]);
 
-    if (!editor || (block.type !== 'CHAPTER' && block.type !== 'CONTENT')) {
+    if (!editor || (block.type !== 'chapter' && block.type !== 'content')) {
         return null;
     }
 
