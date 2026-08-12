@@ -142,15 +142,15 @@
 /* Espaçamento e posicionamento para criar a calha de números de linha */
 .tiptap-editor-area .ProseMirror > * {
     position: relative;
-    padding-left: 55px; /* Espaço para o número da linha */
+    margin-left: 55px; /* Desloca os elementos para a direita preservando margens e paddings nativos */
 }
 
-/* Pseudo-elemento para desenhar o número da linha */
+/* Pseudo-elemento para desenhar o número da linha posicionado na calha esquerda */
 .tiptap-editor-area .ProseMirror > *::before {
     counter-increment: line;
     content: counter(line);
     position: absolute;
-    left: 0;
+    left: -55px; /* Posiciona o número fora da margem do elemento, na calha */
     top: 2px;
     width: 40px;
     text-align: right;
