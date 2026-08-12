@@ -185,7 +185,7 @@ const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize }) => {
     );
 };
 
-export function TipTapDrawer({ block, open, onClose, onSave }) {
+export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [content, setContent] = useState('');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [fontSize, setFontSize] = useState(15);
@@ -298,14 +298,14 @@ export function TipTapDrawer({ block, open, onClose, onSave }) {
                     <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                         <EditorContent editor={editor} className="tiptap-editor-area" />
                     </div>
-                    <AIPanel editor={editor} block={block} />
+                    <AIPanel editor={editor} block={block} globalSetup={globalSetup} />
                 </div>
             </div>
         </>
     );
 }
 
-function AIPanel({ editor, block }) {
+function AIPanel({ editor, block, globalSetup }) {
     const { transformText, getAISettings } = useBackend();
     const [activeTab, setActiveTab] = useState('ai');
     const [prompt, setPrompt] = useState('');
@@ -419,7 +419,58 @@ function AIPanel({ editor, block }) {
     const rawMd = editor.storage.markdown.getMarkdown();
     const wordCount = rawMd.split(/\s+/).filter(Boolean).length;
     const charCount = rawMd.length;
-    const estimatedPages = wordCount > 0 ? (wordCount / 250).toFixed(1) : "0.0";
+    
+    // Calcula estimativa avançada de páginas com base no globalSetup
+    const getEstimatedPages = () => {
+        if (!globalSetup || !wordCount) return "0.0";
+        
+        // 1. Dimensões padrão em mm do papel
+        let w = 148, h = 210; // A5 default fallback
+        const paper = globalSetup.paper || 'a5';
+        if (paper === 'a4') { w = 210; h = 297; }
+        else if (paper === 'letter') { w = 216; h = 279; }
+        else if (paper === '16x23') { w = 160; h = 230; }
+        else if (paper === '15x21') { w = 150; h = 210; }
+        
+        // 2. Parse das margens
+        const parseMargin = (val) => {
+            if (!val) return 20; // default 20mm
+            const num = parseFloat(val);
+            if (String(val).includes('cm')) return num * 10;
+            return num; // assume mm
+        };
+        
+        const inner = parseMargin(globalSetup.innerMargin);
+        const outer = parseMargin(globalSetup.outerMargin);
+        const top = parseMargin(globalSetup.topMargin);
+        const bottom = parseMargin(globalSetup.bottomMargin);
+        
+        // 3. Área imprimível real em mm²
+        const printW = Math.max(50, w - (inner + outer));
+        const printH = Math.max(50, h - (top + bottom));
+        const printArea = printW * printH;
+        
+        // 4. Fator da fonte (LaTeX standard bases: 10pt, 11pt, 12pt)
+        let baseSize = 11;
+        if (globalSetup.baseSize) {
+            baseSize = parseFloat(globalSetup.baseSize) || 11;
+        }
+        // A densidade de caracteres varia inversamente com o quadrado do tamanho da fonte
+        const fontScale = Math.pow(11 / baseSize, 1.6); 
+        
+        // 5. Linha de base de referência:
+        // A4 (210x297) com margens de 20mm tem área imprimível de 170 * 257 = 43690 mm².
+        // Uma folha dessa a 11pt comporta tipicamente ~450 palavras (~2700 a 3000 caracteres com espaços).
+        const baselineArea = 43690;
+        const baselineWords = 450;
+        
+        const wordsPerPage = baselineWords * (printArea / baselineArea) * fontScale;
+        if (wordsPerPage <= 0) return "0.0";
+        
+        return (wordCount / wordsPerPage).toFixed(1);
+    };
+
+    const estimatedPages = getEstimatedPages();
 
     return (
         <div className="ai-assistant-panel" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -572,7 +623,7 @@ function AIPanel({ editor, block }) {
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-                        <span title="Projeção para formato A5 médio (~250 palavras por página)">Páginas Estimadas:</span>
+                        <span title="Cálculo matemático baseado na área de impressão física e tamanho base da fonte (10pt, 11pt, 12pt)">Pág. Estimadas ({globalSetup?.paper?.toUpperCase() || 'A5'}):</span>
                         <strong style={{ color: 'var(--text-primary)' }}>~{estimatedPages} {estimatedPages === "1.0" ? 'pág' : 'págs'}</strong>
                     </div>
 

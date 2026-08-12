@@ -468,6 +468,7 @@ export default function Editor() {
           store.updateBlockContent(id, content);
           store.commitBlockContent(id);
         }}
+        globalSetup={project.global_setup}
       />
     </div>
   );
