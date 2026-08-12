@@ -593,9 +593,9 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                                 className="bubble-menu"
                                 editor={editor}
                                 tippyOptions={{ duration: 100 }}
-                                shouldShow={({ editor, from, to }) => {
+                                shouldShow={({ editor }) => {
                                     // Mostra menu de texto se houver seleção de caracteres E não estiver dentro de uma tabela
-                                    return from !== to && !editor.isActive('table');
+                                    return !editor.state.selection.empty && !editor.isActive('table');
                                 }}
                             >
                                 <button
