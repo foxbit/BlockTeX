@@ -520,6 +520,8 @@ function generatePreamble(globalSetup, metadata) {
         return '\\textit{\\leftmark}';
     };
 
+    const headerEvenText = getHeaderText(globalSetup.headerStyleEven || 'chapter', globalSetup.headerCustomEven);
+    const headerOddText = getHeaderText(globalSetup.headerStyleOdd || 'chapter', globalSetup.headerCustomOdd);
     const headerFontSize = globalSetup.headerFontSize || 9;
     const footerFontSize = globalSetup.footerFontSize || 9;
     const hFontCmd = `\\fontsize{${headerFontSize}pt}{${Math.round(headerFontSize * 1.2)}pt}\\selectfont`;
