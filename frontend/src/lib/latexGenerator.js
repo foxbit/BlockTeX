@@ -32,8 +32,11 @@ function escapeLatex(str, insideMath = false) {
         .replace(/\^/g, '\\^{}')
         .replace(/~/g, '\\textasciitilde{}')
         .replace(/</g, '\\textless{}')
-        .replace(/>/g, '\\textgreater{}');
-    // Não escapamos $ _ { } pois são usados em math inline
+        .replace(/>/g, '\\textgreater{}')
+        .replace(/\$/g, '\\$')
+        .replace(/_/g, '\\_')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}');
 }
 
 // Escapa apenas para uso em argumentos de comandos LaTeX (títulos, etc.)
@@ -48,7 +51,11 @@ function escapeLatexTitle(str) {
         .replace(/#/g, '\\#')
         .replace(/~/g, '\\textasciitilde{}')
         .replace(/</g, '\\textless{}')
-        .replace(/>/g, '\\textgreater{}');
+        .replace(/>/g, '\\textgreater{}')
+        .replace(/\$/g, '\\$')
+        .replace(/_/g, '\\_')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}');
 }
 
 // ============================================================
@@ -123,6 +130,13 @@ function inlineToLatex(text) {
         return `\x00CODE${codePlaceholders.length - 1}\x00`;
     });
 
+    // Protege URLs em links [texto](url) para evitar escapar underlines nela
+    const urlPlaceholders = [];
+    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
+        urlPlaceholders.push(url);
+        return `[${label}](\x00URL${urlPlaceholders.length - 1}\x00)`;
+    });
+
     // Underline: o TipTap serializa <u> como HTML inline (Markdown não tem underline).
     // Converte para \underline{} do LaTeX antes de qualquer escape.
     t = t.replace(/<u>(.+?)<\/u>/g, (_, x) => `\\underline{${x}}`);
@@ -151,7 +165,10 @@ function inlineToLatex(text) {
         .replace(/&/g, '\\&')
         .replace(/%(?!\x00)/g, '\\%')
         .replace(/#/g, '\\#')
-        .replace(/~/g, '\\textasciitilde{}');
+        .replace(/~/g, '\\textasciitilde{}')
+        .replace(/\$/g, '\\$')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}');
 
     // Bold + Italic combinado (***texto***)
     t = t.replace(/\*\*\*(.+?)\*\*\*/g, (_, x) => `\\textbf{\\textit{${x}}}`);
@@ -162,10 +179,14 @@ function inlineToLatex(text) {
     t = t.replace(/\*(.+?)\*/gs, (_, x) => `\\textit{${x}}`);
     t = t.replace(/(?<![a-zA-Z0-9])_([^_\n]+?)_(?![a-zA-Z0-9])/g, (_, x) => `\\textit{${x}}`);
 
-    // Links [texto](url)
-    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) =>
-        `\\href{${url}}{${label}}`
-    );
+    // Escapa underlines restantes (que não foram consumidos como itálico/negrito)
+    t = t.replace(/_/g, '\\_');
+
+    // Converte links de volta e gera o comando \href
+    t = t.replace(/\[([^\]]+)\]\(\x00URL(\d+)\x00\)/g, (_, label, urlId) => {
+        const url = urlPlaceholders[+urlId];
+        return `\\href{${url}}{${label}}`;
+    });
 
     // Restaura placeholders
     t = t.replace(/\x00ENTITY(\d+)\x00/g, (_, i) => entityPlaceholders[+i]);
