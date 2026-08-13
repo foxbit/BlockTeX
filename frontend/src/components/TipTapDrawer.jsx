@@ -192,7 +192,7 @@ const findMatches = (doc, term) => {
     return matches;
 };
 
-const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize, onSearchToggle, showSearch }) => {
+const MenuBar = ({ editor, onImportClick, onExportClick, onZoomIn, onZoomOut, fontSize, onSearchToggle, showSearch }) => {
     const [showFlagSelector, setShowFlagSelector] = useState(false);
     if (!editor) return null;
 
@@ -318,6 +318,14 @@ const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize, onSearc
                     style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', fontWeight: 'normal' }}
                 >
                     📥 Importar MD
+                </button>
+                <button
+                    onClick={onExportClick}
+                    className="toolbar-btn"
+                    title="Exportar Arquivo Markdown"
+                    style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', fontWeight: 'normal' }}
+                >
+                    📤 Exportar MD
                 </button>
             </div>
 
@@ -679,6 +687,24 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
         e.target.value = ''; // Reset so the same file can be selected again
     };
 
+    const handleExportMarkdown = () => {
+        if (!editor) return;
+        const markdown = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
+        const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        
+        const blockIdShort = block?.id ? block.id.split('-')[0] : 'bloco';
+        const filename = `block-${blockIdShort}.md`;
+        
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <>
             <input
@@ -739,6 +765,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
                 <MenuBar 
                     editor={editor} 
                     onImportClick={() => document.getElementById('import-markdown-file').click()} 
+                    onExportClick={handleExportMarkdown}
                     onZoomIn={handleZoomIn}
                     onZoomOut={handleZoomOut}
                     fontSize={fontSize}
