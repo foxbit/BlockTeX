@@ -632,7 +632,7 @@ function generatePreamble(globalSetup, metadata) {
         '           {Ó}{{\\\'O}}1 {Õ}{{\\~O}}1 {Ô}{{\\^O}}1',
         '           {Ú}{{\\\'U}}1 {Ç}{{\\c{C}}}1',
         '           {├}{{|-}}2 {─}{{-}}1 {└}{{\\textbackslash-}}2 {│}{{|}}1',
-        '           {←}{{<-}}2 {→}{{->}}2 {↑}{{\\ensuremath{\\uparrow}}}1 {↓}{{\\ensuremath{\\downarrow}}}1,',
+        '           {←}{{<-}}2 {→}{{->}}2 {↑}{{\\ensuremath{\\uparrow}}}1 {↓}{{\\ensuremath{\\downarrow}}}1 {—}{{---}}1 {–}{{--}}1 {“}{{"}}1 {”}{{"}}1 {‘}{{\'}}1 {’}{{\'}}1,',
         '}',
         '',
         '% ─── Headers & Footers ──────────────────────────────',
