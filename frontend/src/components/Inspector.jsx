@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { BLOCK_TYPE_META, BLOCK_TYPES, PAPER_SIZES, LATEX_ENGINES, DOCUMENT_THEMES, getFontCssFamily } from '../lib/blockTypes.js';
+import { HistoryTab } from './HistoryTab.jsx';
 
 // ─── Toggle ──────────────────────────────────────────────────
 function Toggle({ value, onChange }) {
@@ -1582,11 +1583,13 @@ export function Inspector({
     tab = 'block',
     onTabChange,
     collapsed,
-    onCollapse
+    onCollapse,
+    projectId
 }) {
     const tabs = [
         { id: 'block',  label: 'Bloco' },
         { id: 'global', label: 'Documento' },
+        { id: 'history', label: 'Histórico' },
     ];
 
     const currentTab = onTabChange ? tab : 'block';
@@ -1630,6 +1633,9 @@ export function Inspector({
                         onUpdateMetadata={onUpdateMetadata}
                         onUpdateSetup={onUpdateSetup}
                     />
+                )}
+                {currentTab === 'history' && (
+                    <HistoryTab projectId={projectId} />
                 )}
             </div>
         </aside>

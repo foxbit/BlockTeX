@@ -200,7 +200,7 @@ export default function Editor() {
   const handleSave = useCallback(async () => {
     showNotification('Salvando...', 'success');
     const saveData = store.get();
-    const result = await saveProject(saveData);
+    const result = await saveProject(saveData, true); // commit=true para registrar no histórico
     if (result.success) {
       if (id === 'new') {
         // Redireciona para o ID definitivo para não criar duplicatas em futuros saves
@@ -439,6 +439,7 @@ export default function Editor() {
             onTabChange={setInspectorTab}
             collapsed={inspectorCollapsed}
             onCollapse={() => setInspectorCollapsed(c => !c)}
+            projectId={id}
           />
         </div>
       </div>

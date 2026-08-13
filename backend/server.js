@@ -307,13 +307,20 @@ function parseLatexErrors(log) {
 // Salvar/Criar Projeto
 app.post('/api/project/save', authenticate, async (req, res) => {
     try {
-        const { project_data } = req.body;
+        const { project_data, commit } = req.body;
         // Assegurar ID para novos projetos que não têm
         if (!project_data.id) {
             project_data.id = uuidv4();
         }
 
-        const result = await db.saveProject(project_data);
+        let result;
+        if (commit && project_data.id) {
+            // Salvamento manual: gera commit com diffs
+            result = await db.createCommit(project_data.id, project_data);
+        } else {
+            // Autosave: apenas grava sem gerar histórico
+            result = await db.saveProject(project_data);
+        }
         res.json({ success: true, id: result.id, message: 'Projeto salvo no banco de dados' });
     } catch (err) {
         console.error('Erro ao salvar:', err);
@@ -349,6 +356,28 @@ app.delete('/api/project/:id', authenticate, async (req, res) => {
         res.json({ success: true, id: req.params.id });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete' });
+    }
+});
+
+// Listar commits de um projeto (Histórico)
+app.get('/api/project/:id/commits', authenticate, async (req, res) => {
+    try {
+        const commits = await db.listCommits(req.params.id);
+        res.json({ success: true, commits });
+    } catch (err) {
+        console.error('Erro ao listar commits:', err);
+        res.status(500).json({ error: 'Erro ao carregar histórico' });
+    }
+});
+
+// Detalhes de um commit (Diffs)
+app.get('/api/commit/:id/diffs', authenticate, async (req, res) => {
+    try {
+        const diffs = await db.getCommitDiffs(req.params.id);
+        res.json({ success: true, diffs });
+    } catch (err) {
+        console.error('Erro ao carregar diffs:', err);
+        res.status(500).json({ error: 'Erro ao carregar alterações' });
     }
 });
 

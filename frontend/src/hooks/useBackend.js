@@ -118,13 +118,13 @@ export function useBackend() {
         }
     }, [token, logout]);
 
-    // Save project
-    const saveProject = useCallback(async (projectData) => {
+    // Save project (commit=true gera registro no histórico de alterações)
+    const saveProject = useCallback(async (projectData, commit = false) => {
         try {
             const res = await fetchWithTimeout(`${API_BASE}/project/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ project_data: projectData }),
+                body: JSON.stringify({ project_data: projectData, commit }),
             }, 10000, token, logout);
             return await res.json();
         } catch (e) {
@@ -212,11 +212,32 @@ export function useBackend() {
         }
     }, [token, logout]);
 
+    // Listar commits (histórico) de um projeto
+    const listCommits = useCallback(async (projectId) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/project/${projectId}/commits`, {}, 8000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
+    // Buscar diffs de um commit específico
+    const getCommitDiffs = useCallback(async (commitId) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/commit/${commitId}/diffs`, {}, 8000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
     const clearLogs = useCallback(() => setLogs([]), []);
 
     return {
         status, logs, compile,
         saveProject, loadProject, listProjects, deleteProject, migrateLegacyProjects,
-        clearLogs, checkHealth, getAISettings, saveAISettings, transformText
+        clearLogs, checkHealth, getAISettings, saveAISettings, transformText,
+        listCommits, getCommitDiffs
     };
 }
