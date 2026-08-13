@@ -693,7 +693,7 @@ function generatePreamble(globalSetup, metadata) {
                 !hyphenation ? '  \\hyphenpenalty=10000\\exhyphenpenalty=10000%' : '',
                 `  \\widowpenalty=${penalty}%`,
                 `  \\clubpenalty=${penalty}%`,
-                '}{}',
+                '}{\\par}',
                 '',
             ].filter(l => l !== '');
         })(),
