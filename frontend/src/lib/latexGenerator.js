@@ -428,7 +428,7 @@ function getThemeConfig(theme) {
             sectionStyle: [
                 '\\usepackage{titlesec}',
                 '\\titleformat{\\section}[hang]{\\large\\scshape}{}{{0pt}}{}',
-                '\\titleformat{\\subsection}[hang]{\\normalsize\\itshape}{}{{0pt}}{}',
+                '\\titleformat{\\subsection}[hang]{\\normalsize}{}{{0pt}}{\\MakeUppercase}',
             ].join('\n'),
         },
         corporate: {
