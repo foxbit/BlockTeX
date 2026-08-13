@@ -524,8 +524,8 @@ function generatePreamble(globalSetup, metadata) {
     const headerOddText = getHeaderText(globalSetup.headerStyleOdd || 'chapter', globalSetup.headerCustomOdd);
     const headerFontSize = globalSetup.headerFontSize || 9;
     const footerFontSize = globalSetup.footerFontSize || 9;
-    const hFontCmd = `\\fontsize{${headerFontSize}pt}{${Math.round(headerFontSize * 1.2)}pt}\\selectfont`;
-    const fFontCmd = `\\fontsize{${footerFontSize}pt}{${Math.round(footerFontSize * 1.2)}pt}\\selectfont`;
+    const hFontCmd = `\\fontsize{${headerFontSize}pt}{${Math.round(headerFontSize * 1.2)}pt}\\selectfont `;
+    const fFontCmd = `\\fontsize{${footerFontSize}pt}{${Math.round(footerFontSize * 1.2)}pt}\\selectfont `;
 
     const fancyLines = mirror
         ? [
