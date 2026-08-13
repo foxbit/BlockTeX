@@ -139,7 +139,7 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
             <div className="divider" />
 
             <div className="inspector-section">
-                <div className="inspector-section-title">Cabeçalhos</div>
+                <div className="inspector-section-title">Cabeçalhos e Rodapés</div>
                 <div className="form-group">
                     <label className="form-label">{global_setup.mirror ? 'Página Par (Esquerda)' : 'Todas as Páginas'}</label>
                     <select
@@ -193,6 +193,33 @@ function GlobalTab({ project, onUpdateMetadata, onUpdateSetup }) {
                         )}
                     </>
                 )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                    <div className="form-group">
+                        <label className="form-label">Fonte Cab. (pt)</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            min="6"
+                            max="14"
+                            step="0.5"
+                            value={global_setup.headerFontSize ?? 9}
+                            onChange={e => onUpdateSetup({ headerFontSize: parseFloat(e.target.value) || 9 })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Fonte Rod. (pt)</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            min="6"
+                            max="14"
+                            step="0.5"
+                            value={global_setup.footerFontSize ?? 9}
+                            onChange={e => onUpdateSetup({ footerFontSize: parseFloat(e.target.value) || 9 })}
+                        />
+                    </div>
+                </div>
             </div>
 
             <div className="divider" />

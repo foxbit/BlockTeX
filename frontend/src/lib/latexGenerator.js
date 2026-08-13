@@ -520,18 +520,20 @@ function generatePreamble(globalSetup, metadata) {
         return '\\textit{\\leftmark}';
     };
 
-    const headerEvenText = getHeaderText(globalSetup.headerStyleEven || 'chapter', globalSetup.headerCustomEven);
-    const headerOddText = getHeaderText(globalSetup.headerStyleOdd || 'chapter', globalSetup.headerCustomOdd);
+    const headerFontSize = globalSetup.headerFontSize || 9;
+    const footerFontSize = globalSetup.footerFontSize || 9;
+    const hFontCmd = `\\fontsize{${headerFontSize}pt}{${Math.round(headerFontSize * 1.2)}pt}\\selectfont`;
+    const fFontCmd = `\\fontsize{${footerFontSize}pt}{${Math.round(footerFontSize * 1.2)}pt}\\selectfont`;
 
     const fancyLines = mirror
         ? [
-            '\\fancyfoot[LE,RO]{\\thepage}',
-            `\\fancyhead[RE]{${headerEvenText}}`,
-            `\\fancyhead[LO]{${headerOddText}}`
+            `\\fancyfoot[LE,RO]{${fFontCmd}\\thepage}`,
+            `\\fancyhead[RE]{${hFontCmd}${headerEvenText}}`,
+            `\\fancyhead[LO]{${hFontCmd}${headerOddText}}`
         ]
         : [
-            '\\fancyfoot[C]{\\thepage}',
-            `\\fancyhead[L]{${headerEvenText}}`,
+            `\\fancyfoot[C]{${fFontCmd}\\thepage}`,
+            `\\fancyhead[L]{${hFontCmd}${headerEvenText}}`,
             `\\fancyhead[R]{}` // Ensure right side is empty if not mirror
         ];
 
@@ -643,7 +645,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\renewcommand{\\headrulewidth}{0pt}',
         '\\fancypagestyle{plain}{',
         '  \\fancyhf{}',
-        mirror ? '  \\fancyfoot[LE,RO]{\\thepage}' : '  \\fancyfoot[C]{\\thepage}',
+        mirror ? `  \\fancyfoot[LE,RO]{${fFontCmd}\\thepage}` : `  \\fancyfoot[C]{${fFontCmd}\\thepage}`,
         '  \\renewcommand{\\headrulewidth}{0pt}',
         '}',
         '',
