@@ -362,3 +362,25 @@ export function SettingsModal({ getAISettings, saveAISettings, onClose }) {
         </div>
     );
 }
+
+export function ConfirmDeleteModal({ onConfirm, onCancel, title = "Excluir Bloco", message = "Tem certeza de que deseja excluir este bloco? Esta ação não pode ser desfeita." }) {
+    return (
+        <div className="modal-overlay">
+            <div className="modal" style={{ maxWidth: '400px' }}>
+                <div className="modal-header">
+                    <h2 className="modal-title" style={{ color: 'var(--accent-rose)' }}>⚠️ {title}</h2>
+                    <button type="button" className="close-btn" onClick={onCancel} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '18px' }}>✕</button>
+                </div>
+                <div className="modal-body">
+                    <p style={{ color: 'var(--text-main)', fontSize: '14px', lineHeight: '1.5', margin: 0 }}>
+                        {message}
+                    </p>
+                </div>
+                <div className="modal-footer" style={{ gap: '10px' }}>
+                    <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
+                    <button type="button" className="btn btn-danger" onClick={onConfirm}>Excluir</button>
+                </div>
+            </div>
+        </div>
+    );
+}

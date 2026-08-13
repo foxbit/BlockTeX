@@ -5,7 +5,7 @@ import { Canvas } from '../components/Canvas.jsx';
 import { Inspector } from '../components/Inspector.jsx';
 import { LogConsole } from '../components/LogConsole.jsx';
 import { PreviewPanel } from '../components/PreviewPanel.jsx';
-import { ExportTexModal } from '../components/Modals.jsx';
+import { ExportTexModal, ConfirmDeleteModal } from '../components/Modals.jsx';
 import { ProjectStore, DEFAULT_PROJECT } from '../store/projectStore.js';
 import { generateTex } from '../lib/latexGenerator.js';
 import { useBackend } from '../hooks/useBackend.js';
@@ -47,6 +47,7 @@ export default function Editor() {
   const [pdfBase64, setPdfBase64] = useState(null);
   const [modal, setModal] = useState(null); // 'new' | 'save' | 'tex' | null
   const [editingBlockId, setEditingBlockId] = useState(null);
+  const [deleteBlockId, setDeleteBlockId] = useState(null);
   const [notification, setNotification] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
@@ -291,6 +292,19 @@ export default function Editor() {
         />
       )}
 
+      {deleteBlockId && (
+        <ConfirmDeleteModal
+          onConfirm={() => {
+            store.removeBlock(deleteBlockId);
+            if (selectedBlockId === deleteBlockId) setSelectedBlockId(null);
+            setDeleteBlockId(null);
+          }}
+          onCancel={() => setDeleteBlockId(null)}
+          title="Excluir Bloco"
+          message="Tem certeza de que deseja excluir este bloco? Esta ação não pode ser desfeita."
+        />
+      )}
+
       {/* Topbar */}
       <header className="topbar">
         {/* Logo */}
@@ -407,8 +421,7 @@ export default function Editor() {
             onSelect={setSelectedBlockId}
             onEditContent={(id) => setEditingBlockId(id)}
             onDelete={(id) => {
-              store.removeBlock(id);
-              if (selectedBlockId === id) setSelectedBlockId(null);
+              setDeleteBlockId(id);
             }}
             onDuplicate={(id) => {
               const newId = store.duplicateBlock(id);
