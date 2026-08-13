@@ -465,11 +465,17 @@ export default function Editor() {
         block={editingBlock}
         open={!!editingBlockId}
         onClose={() => setEditingBlockId(null)}
-        onSave={(id, content) => {
-          store.updateBlockContent(id, content);
-          store.commitBlockContent(id);
+        onSave={async (blockId, content, commit) => {
+          store.updateBlockContent(blockId, content);
+          store.commitBlockContent(blockId);
+          const saveData = store.get();
+          const result = await saveProject(saveData, commit);
+          if (result.success) {
+            setProject(saveData);
+          }
         }}
         globalSetup={project.global_setup}
+        projectId={id}
       />
     </div>
   );

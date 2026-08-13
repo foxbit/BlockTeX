@@ -313,10 +313,12 @@ app.post('/api/project/save', authenticate, async (req, res) => {
             project_data.id = uuidv4();
         }
 
+        console.log(`[API /project/save] Project ID: ${project_data.id}, Commit Flag: ${commit}`);
         let result;
         if (commit && project_data.id) {
             // Salvamento manual: gera commit com diffs
             result = await db.createCommit(project_data.id, project_data);
+            console.log(`[API /project/save] createCommit result:`, result);
         } else {
             // Autosave: apenas grava sem gerar histórico
             result = await db.saveProject(project_data);
@@ -378,6 +380,17 @@ app.get('/api/commit/:id/diffs', authenticate, async (req, res) => {
     } catch (err) {
         console.error('Erro ao carregar diffs:', err);
         res.status(500).json({ error: 'Erro ao carregar alterações' });
+    }
+});
+
+// Histórico de alterações de um bloco específico
+app.get('/api/project/:id/block/:blockId/history', authenticate, async (req, res) => {
+    try {
+        const history = await db.getBlockHistory(req.params.id, req.params.blockId);
+        res.json({ success: true, history });
+    } catch (err) {
+        console.error('Erro ao carregar histórico do bloco:', err);
+        res.status(500).json({ error: 'Erro ao carregar histórico do bloco' });
     }
 });
 

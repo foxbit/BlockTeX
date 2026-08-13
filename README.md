@@ -170,6 +170,12 @@ npm run dev
 - **Visualizador de Diferenças (Diff)**: Exibição visual colorida contrastante das adições (verde) e remoções (vermelho) propostas pela IA antes de aceitar ou descartar as alterações.
 - **Configuração Segura**: Chave de API configurada no arquivo `.env` local do servidor, preservando a segurança das suas credenciais.
 
+### Histórico de Alterações (Changelog)
+- **Histórico por Bloco no Editor (TipTap)**: Aba **🕒 Histórico** integrada diretamente na barra lateral de edição do bloco (TipTapDrawer), permitindo consultar o histórico de versões daquele bloco específico em tempo real.
+- **Visualização de Diferenças (Diff)**: Exibição visual e colorida (estilo Git/Unified Diff) das adições (verde com `+`) e remoções (vermelho com `-`) de linhas de texto do bloco.
+- **Armazenamento Otimizado (Delta)**: O sistema de comparação atua de forma precisa linha por linha sobre o conteúdo Markdown com quebras de linha reais (`\n`), gravando apenas as diferenças (patches) no SQLite para evitar inflação desnecessária do banco de dados.
+- **Isolamento de Rascunho vs Versão Salva**: Uso de tabela separada (`committed_projects`) para garantir que os auto-saves silenciosos em segundo plano gravem o rascunho de trabalho (tabela `projects`) sem apagar ou poluir a cadeia de commits consolidada (gerada apenas ao salvar o bloco ou projeto manualmente).
+
 
 ---
 

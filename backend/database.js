@@ -20,12 +20,18 @@ async function getDb() {
             driver: sqlite3.Database
         }).then(async (db) => {
             await db.exec('PRAGMA foreign_keys = ON');
-            // Setup tables
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS projects (
                     id TEXT PRIMARY KEY,
                     title TEXT NOT NULL,
                     updated_at INTEGER NOT NULL,
+                    metadata TEXT,
+                    global_setup TEXT,
+                    blocks TEXT
+                );
+                
+                CREATE TABLE IF NOT EXISTS committed_projects (
+                    id TEXT PRIMARY KEY,
                     metadata TEXT,
                     global_setup TEXT,
                     blocks TEXT
@@ -109,10 +115,16 @@ async function saveProject(projectData) {
     const title = metadata?.title || 'Sem Título';
     const now = Date.now();
 
-    // UPSERT style using REPLACE
+    // UPSERT style using ON CONFLICT DO UPDATE to prevent CASCADE deletes on project_commits
     await db.run(`
-        REPLACE INTO projects (id, title, updated_at, metadata, global_setup, blocks)
+        INSERT INTO projects (id, title, updated_at, metadata, global_setup, blocks)
         VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            updated_at = excluded.updated_at,
+            metadata = excluded.metadata,
+            global_setup = excluded.global_setup,
+            blocks = excluded.blocks
     `, [
         id,
         title,
@@ -128,6 +140,7 @@ async function saveProject(projectData) {
 async function deleteProject(id) {
     const db = await getDb();
     await db.run('DELETE FROM projects WHERE id = ?', id);
+    await db.run('DELETE FROM committed_projects WHERE id = ?', id);
 }
 
 // Universal Styles (e.g. default block configurations across projects)
@@ -160,7 +173,12 @@ function extractComparableContent(block) {
         }
     }
     delete clone.collapsed;
-    return JSON.stringify(clone, null, 2);
+    
+    // Extrai o conteúdo textual (Markdown) para permitir diff linha por linha eficiente
+    const content = clone.content || '';
+    delete clone.content;
+    
+    return `[Metadata]\n${JSON.stringify(clone, null, 2)}\n\n[Content]\n${content}`;
 }
 
 async function createCommit(projectId, newData) {
@@ -169,14 +187,24 @@ async function createCommit(projectId, newData) {
     try {
         await db.exec('BEGIN TRANSACTION');
 
-        // 1. Read old data before overwriting
-        const oldRow = await db.get('SELECT blocks, metadata, global_setup FROM projects WHERE id = ?', projectId);
+        // 1. Read old committed data, fallback to projects table if not found
+        let oldRow = await db.get('SELECT blocks, metadata, global_setup FROM committed_projects WHERE id = ?', projectId);
+        if (!oldRow) {
+            oldRow = await db.get('SELECT blocks, metadata, global_setup FROM projects WHERE id = ?', projectId);
+        }
 
-        // 2. Write the new project data (same as saveProject)
+        // 2. Write the new project data to projects (draft) table
         const title = newData.metadata?.title || 'Sem Título';
         const now = Date.now();
         await db.run(
-            'REPLACE INTO projects (id, title, updated_at, metadata, global_setup, blocks) VALUES (?, ?, ?, ?, ?, ?)',
+            `INSERT INTO projects (id, title, updated_at, metadata, global_setup, blocks)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                 title = excluded.title,
+                 updated_at = excluded.updated_at,
+                 metadata = excluded.metadata,
+                 global_setup = excluded.global_setup,
+                 blocks = excluded.blocks`,
             [
                 projectId,
                 title,
@@ -187,13 +215,23 @@ async function createCommit(projectId, newData) {
             ]
         );
 
-        // If no old data exists (first save), commit without diffs
+        // 3. Compute diffs between old committed data and newData
+        // If firstCommit is true and there is no oldRow at all in projects, we just commit without diffs
         if (!oldRow) {
+            // First save of a brand new project, write to committed_projects
+            await db.run(
+                'REPLACE INTO committed_projects (id, metadata, global_setup, blocks) VALUES (?, ?, ?, ?)',
+                [
+                    projectId,
+                    JSON.stringify(newData.metadata || {}),
+                    JSON.stringify(newData.global_setup || {}),
+                    JSON.stringify(newData.blocks || [])
+                ]
+            );
             await db.exec('COMMIT');
             return { id: projectId, title, updated_at: now, commitId: null };
         }
 
-        // 3. Parse old data
         const oldBlocks = JSON.parse(oldRow.blocks || '[]');
         const oldMetadata = JSON.parse(oldRow.metadata || '{}');
         const oldSetup = JSON.parse(oldRow.global_setup || '{}');
@@ -201,13 +239,11 @@ async function createCommit(projectId, newData) {
         const newMetadata = newData.metadata || {};
         const newSetup = newData.global_setup || {};
 
-        // 4. Build maps
         const oldMap = {};
         for (const b of oldBlocks) oldMap[b.id] = b;
         const newMap = {};
         for (const b of newBlocks) newMap[b.id] = b;
 
-        // 5. Compute diffs
         const diffs = [];
 
         // Deleted or modified blocks
@@ -284,13 +320,24 @@ async function createCommit(projectId, newData) {
             });
         }
 
-        // 6. If no changes, just commit the transaction without creating a changelog entry
+        // 4. Update committed_projects with the new committed state
+        await db.run(
+            'REPLACE INTO committed_projects (id, metadata, global_setup, blocks) VALUES (?, ?, ?, ?)',
+            [
+                projectId,
+                JSON.stringify(newData.metadata || {}),
+                JSON.stringify(newData.global_setup || {}),
+                JSON.stringify(newData.blocks || [])
+            ]
+        );
+
+        // 5. If no changes, just commit the transaction without creating a changelog entry
         if (diffs.length === 0) {
             await db.exec('COMMIT');
             return { id: projectId, title, updated_at: now, commitId: null };
         }
 
-        // 7. Create commit record
+        // 6. Create commit record
         const commitId = uuidv4();
         const commitMessage = `Salvo em ${new Date(now).toLocaleString('pt-BR')}`;
         await db.run(
@@ -298,7 +345,7 @@ async function createCommit(projectId, newData) {
             [commitId, projectId, commitMessage, now]
         );
 
-        // 8. Insert diffs
+        // 7. Insert diffs
         const stmt = await db.prepare(
             'INSERT INTO commit_diffs (commit_id, block_id, block_type, change_type, patch) VALUES (?, ?, ?, ?, ?)'
         );
@@ -307,7 +354,7 @@ async function createCommit(projectId, newData) {
         }
         await stmt.finalize();
 
-        // 9. Cleanup old commits (keep last 100)
+        // 8. Cleanup old commits (keep last 100)
         await deleteOldCommits(projectId, 100);
 
         await db.exec('COMMIT');
@@ -332,6 +379,18 @@ async function getCommitDiffs(commitId) {
     return await db.all(
         'SELECT id, block_id, block_type, change_type, patch FROM commit_diffs WHERE commit_id = ?',
         [commitId]
+    );
+}
+
+async function getBlockHistory(projectId, blockId) {
+    const db = await getDb();
+    return await db.all(
+        `SELECT pc.id as commit_id, pc.message, pc.timestamp, cd.change_type, cd.patch
+         FROM project_commits pc
+         JOIN commit_diffs cd ON pc.id = cd.commit_id
+         WHERE pc.project_id = ? AND cd.block_id = ?
+         ORDER BY pc.timestamp DESC`,
+        [projectId, blockId]
     );
 }
 
@@ -360,5 +419,6 @@ module.exports = {
     createCommit,
     listCommits,
     getCommitDiffs,
+    getBlockHistory,
     deleteOldCommits
 };

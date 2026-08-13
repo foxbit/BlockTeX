@@ -232,12 +232,22 @@ export function useBackend() {
         }
     }, [token, logout]);
 
+    // Listar histórico de alterações de um bloco específico
+    const listBlockHistory = useCallback(async (projectId, blockId) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/project/${projectId}/block/${blockId}/history`, {}, 8000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
     const clearLogs = useCallback(() => setLogs([]), []);
 
     return {
         status, logs, compile,
         saveProject, loadProject, listProjects, deleteProject, migrateLegacyProjects,
         clearLogs, checkHealth, getAISettings, saveAISettings, transformText,
-        listCommits, getCommitDiffs
+        listCommits, getCommitDiffs, listBlockHistory
     };
 }

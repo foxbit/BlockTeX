@@ -6,7 +6,7 @@ import './HistoryTab.css';
 // ── Helpers ──────────────────────────────────────────────────
 
 /** Formata timestamp para data/hora legível */
-function formatDate(ts) {
+export function formatDate(ts) {
     const d = new Date(ts);
     const now = new Date();
     const diffMs = now - d;
@@ -24,7 +24,7 @@ function formatDate(ts) {
 }
 
 /** Traduz o tipo de mudança para label legível */
-function changeTypeLabel(type) {
+export function changeTypeLabel(type) {
     switch (type) {
         case 'ADDED': return 'Adicionado';
         case 'DELETED': return 'Removido';
@@ -49,7 +49,7 @@ function blockTypeLabel(blockId, blockType) {
 }
 
 /** Classe CSS para o badge de tipo de mudança */
-function changeTypeBadgeClass(type) {
+export function changeTypeBadgeClass(type) {
     switch (type) {
         case 'ADDED': return 'diff-badge added';
         case 'DELETED': return 'diff-badge deleted';
@@ -61,7 +61,7 @@ function changeTypeBadgeClass(type) {
 
 // ── Componente de Visualização de Patch ──────────────────────
 
-function PatchViewer({ patch, changeType }) {
+export function PatchViewer({ patch, changeType }) {
     if (!patch) return null;
 
     // Para ADDED/DELETED, mostrar o conteúdo diretamente

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { Node, mergeAttributes } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
@@ -14,6 +14,8 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
+import { PatchViewer, formatDate, changeTypeLabel, changeTypeBadgeClass } from './HistoryTab.jsx';
+import './HistoryTab.css';
 
 // Sanitiza a saída Markdown do TipTap, removendo entidades HTML
 // que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
@@ -429,7 +431,7 @@ const MenuBar = ({ editor, onImportClick, onZoomIn, onZoomOut, fontSize, onSearc
     );
 };
 
-export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
+export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projectId }) {
     const [content, setContent] = useState('');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [fontSize, setFontSize] = useState(() => {
@@ -439,6 +441,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
     const [lastSaveInfo, setLastSaveInfo] = useState({ time: null, type: null });
     const scrollContainerRef = useRef(null);
     const [selectionTick, setSelectionTick] = useState(0);
+    const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
     // Estados da busca
     const [showSearch, setShowSearch] = useState(false);
@@ -649,12 +652,15 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
 
     if (!block) return null;
 
-    const handleSave = (type = 'manual') => {
-        onSave(block.id, content);
+    const handleSave = async (type = 'manual') => {
+        await onSave(block.id, content, type === 'manual');
         setHasUnsavedChanges(false);
         const now = new Date();
         const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setLastSaveInfo({ time: timeStr, type });
+        if (type === 'manual') {
+            setHistoryRefreshTrigger(prev => prev + 1);
+        }
     };
 
     const handleImportMarkdown = (e) => {
@@ -875,15 +881,114 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup }) {
                         )}
                         <EditorContent editor={editor} className="tiptap-editor-area" />
                     </div>
-                    <AIPanel editor={editor} block={block} globalSetup={globalSetup} />
+                    <AIPanel editor={editor} block={block} globalSetup={globalSetup} projectId={projectId} historyRefreshTrigger={historyRefreshTrigger} />
                 </div>
             </div>
         </>
     );
 }
 
-function AIPanel({ editor, block, globalSetup }) {
-    const { transformText, getAISettings } = useBackend();
+function BlockHistoryTab({ projectId, blockId, refreshTrigger }) {
+    const { listBlockHistory } = useBackend();
+    const [history, setHistory] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [expandedCommit, setExpandedCommit] = useState(null);
+
+    const fetchHistory = useCallback(async () => {
+        if (!projectId || projectId === 'new' || !blockId) {
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        const res = await listBlockHistory(projectId, blockId);
+        if (res.success) {
+            setHistory(res.history || []);
+        }
+        setLoading(false);
+    }, [projectId, blockId, listBlockHistory]);
+
+    useEffect(() => {
+        fetchHistory();
+    }, [fetchHistory, refreshTrigger]);
+
+    const handleExpandCommit = (commitId) => {
+        setExpandedCommit(expandedCommit === commitId ? null : commitId);
+    };
+
+    if (!projectId || projectId === 'new') {
+        return (
+            <div className="history-empty" style={{ padding: '20px 10px' }}>
+                <div className="history-empty-icon">📝</div>
+                <div>Salve o projeto para iniciar o histórico.</div>
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="history-loading" style={{ padding: '20px 10px' }}>
+                <div className="history-spinner" />
+                <div>Carregando histórico...</div>
+            </div>
+        );
+    }
+
+    if (history.length === 0) {
+        return (
+            <div className="history-empty" style={{ padding: '20px 10px' }}>
+                <div className="history-empty-icon">📋</div>
+                <div>Nenhuma alteração neste bloco ainda.</div>
+                <div className="history-empty-hint">
+                    Use <kbd>Ctrl+S</kbd> ou o botão Salvar no painel para registrar alterações.
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="history-tab" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div className="history-header" style={{ padding: '4px 0 8px 0' }}>
+                <span className="history-count">{history.length} versão{history.length !== 1 ? 'ões' : 'ão'}</span>
+                <button className="btn btn-ghost btn-sm" onClick={fetchHistory} title="Atualizar">↻</button>
+            </div>
+
+            <div className="history-timeline" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+                {history.map((item) => (
+                    <div key={item.commit_id} className={`history-commit ${expandedCommit === item.commit_id ? 'expanded' : ''}`}>
+                        <button
+                            className="history-commit-header"
+                            onClick={() => handleExpandCommit(item.commit_id)}
+                            style={{ padding: '8px 4px' }}
+                        >
+                            <div className="commit-dot" />
+                            <div className="commit-info">
+                                <div className="commit-message" style={{ fontSize: '11px' }}>{item.message}</div>
+                                <div className="commit-time" style={{ fontSize: '9px' }}>{formatDate(item.timestamp)}</div>
+                            </div>
+                            <div className={`commit-chevron ${expandedCommit === item.commit_id ? 'open' : ''}`}>▾</div>
+                        </button>
+
+                        {expandedCommit === item.commit_id && (
+                            <div className="history-diffs" style={{ padding: '4px 4px 8px 16px' }}>
+                                <div className="diff-entry">
+                                    <div className="diff-header" style={{ padding: '4px 8px' }}>
+                                        <span className={changeTypeBadgeClass(item.change_type)} style={{ fontSize: '9px', padding: '1px 4px' }}>
+                                            {changeTypeLabel(item.change_type)}
+                                        </span>
+                                    </div>
+                                    <PatchViewer patch={item.patch} changeType={item.change_type} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function AIPanel({ editor, block, globalSetup, projectId, historyRefreshTrigger }) {
+    const { transformText, getAISettings, listBlockHistory } = useBackend();
     const [activeTab, setActiveTab] = useState('ai');
     const [prompt, setPrompt] = useState('');
     const [loading, setLoading] = useState(false);
@@ -1090,9 +1195,28 @@ function AIPanel({ editor, block, globalSetup }) {
                 >
                     ℹ️ Info do Bloco
                 </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('history')}
+                    style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: activeTab === 'history' ? '2px solid var(--accent-indigo)' : '2px solid transparent',
+                        color: activeTab === 'history' ? 'var(--text-accent)' : 'var(--text-muted)',
+                        fontWeight: activeTab === 'history' ? 600 : 'normal',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        textAlign: 'center',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    🕒 Histórico
+                </button>
             </div>
 
-            {activeTab === 'ai' ? (
+            {activeTab === 'ai' && (
                 <>
                     <h3 className="ai-panel-title" style={{ marginTop: 0 }}>🪄 Assistente de Escrita IA</h3>
                     
@@ -1180,7 +1304,9 @@ function AIPanel({ editor, block, globalSetup }) {
                         </div>
                     )}
                 </>
-            ) : (
+            )}
+
+            {activeTab === 'info' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                     <h3 className="ai-panel-title" style={{ marginTop: 0 }}>ℹ️ Detalhes do Bloco</h3>
                     
@@ -1214,6 +1340,10 @@ function AIPanel({ editor, block, globalSetup }) {
                         </ul>
                     </div>
                 </div>
+            )}
+
+            {activeTab === 'history' && (
+                <BlockHistoryTab projectId={projectId} blockId={block.id} refreshTrigger={historyRefreshTrigger} />
             )}
         </div>
     );
