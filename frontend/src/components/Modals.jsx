@@ -268,9 +268,9 @@ export function ExportTexModal({ texContent, onClose }) {
 }
 
 export function SettingsModal({ getAISettings, saveAISettings, onClose }) {
-    const [provider, setProvider] = useState('gemini');
-    const [model, setModel] = useState('gemini-2.5-flash');
-    const [availableProviders, setAvailableProviders] = useState({ gemini: false });
+    const [provider, setProvider] = useState('opencode');
+    const [model, setModel] = useState('deepseek-v4-pro');
+    const [availableProviders, setAvailableProviders] = useState({ opencode: false });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -279,9 +279,9 @@ export function SettingsModal({ getAISettings, saveAISettings, onClose }) {
             setLoading(true);
             const res = await getAISettings();
             if (res.success) {
-                setProvider(res.provider || 'gemini');
-                setModel(res.model || 'gemini-2.5-flash');
-                setAvailableProviders(res.availableProviders || { gemini: false });
+                setProvider(res.provider || 'opencode');
+                setModel(res.model || 'deepseek-v4-pro');
+                setAvailableProviders(res.availableProviders || { opencode: false });
             }
             setLoading(false);
         };
@@ -345,7 +345,8 @@ export function SettingsModal({ getAISettings, saveAISettings, onClose }) {
                                     value={model} 
                                     onChange={e => setModel(e.target.value)}
                                 >
-                                    <option value="deepseek-v4-flash">DeepSeek V4 Flash (Recomendado)</option>
+                                    <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+                                    <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
                                 </select>
                             </div>
                         </div>

@@ -420,7 +420,7 @@ app.get('/api/ai/settings', authenticate, async (req, res) => {
     try {
         const hasOpenCodeKey = !!(process.env.OPENCODE_API_KEY && process.env.OPENCODE_API_KEY.trim());
         const provider = await db.getGlobalStyle('settings_ai_provider') || 'opencode';
-        const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-flash';
+        const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-pro';
         res.json({
             success: true,
             provider,
@@ -463,7 +463,7 @@ app.post('/api/ai/transform', authenticate, async (req, res) => {
         }
 
         const baseUrl = (process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1').trim();
-        const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-flash';
+        const model = await db.getGlobalStyle('settings_ai_model') || 'deepseek-v4-pro';
 
         const response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
