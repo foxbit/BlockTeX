@@ -166,6 +166,11 @@ function inlineToLatex(text) {
         return `\x00ENTITY${entityPlaceholders.length - 1}\x00`;
     });
 
+    // Preserva espaços múltiplos consecutivos e espaços não-quebráveis (Unicode 0x00A0 / &nbsp;)
+    t = t.replace(/&nbsp;/gi, '\x00NBSP\x00');
+    t = t.replace(/[\u00A0\xa0]/g, '\x00NBSP\x00');
+    t = t.replace(/ {2,}/g, match => ' ' + '\x00NBSP\x00'.repeat(match.length - 1));
+
     // 8. Escapa caracteres especiais do LaTeX no texto normal
     t = t
         .replace(/\\/g, '\\textbackslash{}')
@@ -200,6 +205,7 @@ function inlineToLatex(text) {
     t = t.replace(/\x00CODE(\d+)\x00/g, (_, i) => codePlaceholders[+i]);
     t = t.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathPlaceholders[+i]);
     t = t.replace(/\x00BREAK\x00/g, ' \\\\\n');
+    t = t.replace(/\x00NBSP\x00/g, '~');
 
     return t;
 }
@@ -591,6 +597,7 @@ function generatePreamble(globalSetup, metadata) {
         '\\usepackage{amsmath}',
         '\\usepackage{amssymb}',
         '\\usepackage{newunicodechar}',
+        '\\newunicodechar{ }{~}',
         '\\newunicodechar{á}{\\ifmmode\\text{\\char225\\relax}\\else\\char225\\relax\\fi}',
         '\\newunicodechar{ã}{\\ifmmode\\text{\\char227\\relax}\\else\\char227\\relax\\fi}',
         '\\newunicodechar{â}{\\ifmmode\\text{\\char226\\relax}\\else\\char226\\relax\\fi}',
