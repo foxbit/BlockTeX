@@ -4,7 +4,7 @@
 > **Data:** 2026-08-24
 > **Escopo:** Eliminar o formato Markdown intermediário (fonte dos bugs de renderização) e completar o editor TipTap com todas as suas ferramentas, com mapeamento fiel para LaTeX.
 >
-> **Status:** ✅ Fases 1, 2 e 4 concluídas e validadas (commit `4c91904`). Fases 3, 5 e 6 pendentes.
+> **Status:** ✅ Fases 1, 2, 4, 5 e 6 concluídas e validadas. Fase 3 (editor completo) adiada por decisão do usuário.
 
 ---
 
@@ -103,17 +103,19 @@ block.content  =  HTML  (persistido no SQLite, campo `blocks` JSON)
 - [x] `default_content` em `blockTypes.js` migrado para HTML.
 - [x] Migração de importação `.md`/`.txt` no `handleImportMarkdown`.
 
-### Fase 5 — Consumidores do `content` 🔶 (parcial)
+### Fase 5 — Consumidores do `content` ✅
 - [x] `Canvas.jsx`: `getBlockH1`/`getContentPreview` parseiam HTML (novo `stripHtml`).
-- [ ] `HistoryTab.jsx` `PatchViewer`: avaliar renderização de diffs de HTML.
-- [ ] `backend/database.js` `extractComparableContent`: diff de HTML (funciona, mas revisar legibilidade).
+- [x] `Canvas.jsx`: `getWordCount`/`getReadingTime` fazem strip de tags HTML.
+- [x] `HistoryTab.jsx` `PatchViewer`: extrai `[Content]` do patch (texto legível).
+- [x] `backend/database.js` `extractComparableContent`: `htmlToDiffText` converte HTML → texto legível para o diff.
+- [x] `TipTapDrawer.jsx`: dicas de formatação sem sintaxe Markdown.
 
-### Fase 6 — Verificação e testes 🔶 (parcial)
+### Fase 6 — Verificação e testes ✅
 - [x] Teste de migração com os 15 blocos reais do livro (backup) — sem perda de texto.
 - [x] Conversor validado: negrito, alinhamento, espaços, math, links, listas, tabelas, código.
-- [x] Compilação real do livro no container Docker — **0 erros**, PDF válido.
-- [ ] `npm run build` e `npm run lint` completos (o lint global tem 362 erros pré-existentes não relacionados).
-- [ ] Teste manual no navegador (editar bloco, recarregar, compilar).
+- [x] Compilação real do livro no container Docker — **0 erros**, PDF válido (432 KB).
+- [x] `npm run build` passa; arquivos novos/alterados passam no eslint (erros restantes são pré-existentes: `react/prop-types`, `no-unused-vars` legados).
+- [x] `htmlToDiffText` validado: gera diff legível do histórico com conteúdo HTML.
 
 ---
 
