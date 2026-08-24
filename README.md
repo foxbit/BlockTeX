@@ -111,6 +111,9 @@ npm run dev
 - **Duplicação e exclusão** de blocos
 - **Separador com Quebra de Página**: O bloco Separador agora pode ser opcionalmente marcado no Inspector como uma quebra de página (`\clearpage`), iniciando o próximo bloco em página nova sem desenhar a linha divisória.
 - **Indicadores visuais de quebra de página** e status direto no Canvas
+- **Modo Visual/Código no editor**: Toggle `👁 Visual` / `</> Código` no drawer do bloco para alternar entre a edição WYSIWYG e o **HTML nativo bruto** do bloco (via `editor.getHTML()`), permitindo inspecionar e corrigir a formatação que fica inacessível à barra de ferramentas padrão do TipTap. Editar o HTML e voltar ao modo Visual (ou salvar) aplica o conteúdo de volta ao editor (`setContent`).
+  - **CodeMirror 6** como editor de código no modo `Código`: syntax highlighting (tags em rosa, atributos em âmbar, valores em verde, classes/IDs em índigo), indentação automática ao entrar no modo, números de linha, fold de blocos, matching de tags, autoclose de tags e busca integrada (`Ctrl+F`).
+  - Tema escuro integrado às variáveis CSS do BlockTeX (acompanha o seletor de temas do app).
 
 ### Configurações Globais
 - Formato físico: A4, A5, 16×23cm, 15×21cm, US Letter, customizado
@@ -171,6 +174,8 @@ npm run dev
 - **Configuração Segura**: Chave de API configurada no arquivo `.env` local do servidor, preservando a segurança das suas credenciais.
 
 ### Histórico de Alterações (Changelog)
+- **HTML Nativo (Refatoração)**: O conteúdo dos blocos agora é armazenado como **HTML nativo do TipTap** (em vez de Markdown), preservando exatamente a formatação aplicada no editor (alinhamento, negrito, tabelas, etc.) ao longo do ciclo salvar → recarregar → compilar.
+- **Modo Visual/Código + CodeMirror**: Adicionado toggle no drawer do editor para inspecionar/editar o HTML bruto do bloco com syntax highlighting e indentação via CodeMirror 6.
 - **Histórico por Bloco no Editor (TipTap)**: Aba **🕒 Histórico** integrada diretamente na barra lateral de edição do bloco (TipTapDrawer), permitindo consultar o histórico de versões daquele bloco específico em tempo real.
 - **Visualização de Diferenças (Diff)**: Exibição visual e colorida (estilo Git/Unified Diff) das adições (verde com `+`) e remoções (vermelho com `-`) de linhas de texto do bloco.
 - **Armazenamento Otimizado (Delta)**: O sistema de comparação atua de forma precisa linha por linha sobre o conteúdo Markdown com quebras de linha reais (`\n`), gravando apenas as diferenças (patches) no SQLite para evitar inflação desnecessária do banco de dados.
