@@ -477,12 +477,12 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                     <label className="form-label">Quebra de Página</label>
                     <select
                         className="form-select"
-                        value={config.page_break || 'before'}
+                        value={config.page_break || 'none'}
                         onChange={e => onUpdateConfig({ page_break: e.target.value })}
                     >
-                        <option value="before">Quebra antes do bloco (Página nova)</option>
-                        <option value="isolated">Página isolada (sempre ímpar/direita)</option>
-                        <option value="none_inline">Sem quebra (continuar na mesma página)</option>
+                        <option value="none">Nenhuma (fluxo normal)</option>
+                        <option value="before">Quebra antes do bloco</option>
+                        <option value="isolated">Página isolada (sempre ímpar)</option>
                     </select>
                 </div>
 
