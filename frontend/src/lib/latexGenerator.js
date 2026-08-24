@@ -390,7 +390,15 @@ function mdToLatex(md, config = {}) {
         const hMatch = line.match(/^(#{1,4}) (.+)$/);
         if (hMatch) {
             const level = hMatch[1].length;
-            const rawTitle = hMatch[2].replace(/\*\*(.+?)\*\*/g, '$1').trim();
+            const rawTitle = hMatch[2]
+                .replace(/@@BOLDITALICSTART@@(.*?)@@BOLDITALICEND@@/g, '$1')
+                .replace(/@@BOLDSTART@@(.*?)@@BOLDEND@@/g, '$1')
+                .replace(/@@ITALICSTART@@(.*?)@@ITALICEND@@/g, '$1')
+                .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+                .replace(/\*\*(.+?)\*\*/g, '$1')
+                .replace(/__(.+?)__/g, '$1')
+                .replace(/\*(.+?)\*/g, '$1')
+                .trim();
             // Guard: pula headings com título vazio ou somente barras/espaços
             // (ex: '## \\' gerado por conversão incorreta de DOCX)
             if (!rawTitle || /^[\\\s]+$/.test(rawTitle)) {
