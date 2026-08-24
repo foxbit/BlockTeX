@@ -493,6 +493,30 @@ function BlockTab({ block, onUpdateConfig, onUpdateStyleVars }) {
                         onClick={() => onUpdateConfig({ toc_visible: config.toc_visible === false ? true : false })}
                     />
                 </div>
+
+                <div className="toggle-group">
+                    <span className="toggle-label">↕️ Centralizar Texto Verticalmente</span>
+                    <div
+                        className={`toggle ${config.vcenter ? 'on' : ''}`}
+                        onClick={() => onUpdateConfig({ vcenter: !config.vcenter })}
+                    />
+                </div>
+
+                <div className="toggle-group">
+                    <span className="toggle-label">🚫 Ocultar Cabeçalho neste bloco</span>
+                    <div
+                        className={`toggle ${config.hide_header ? 'on' : ''}`}
+                        onClick={() => onUpdateConfig({ hide_header: !config.hide_header })}
+                    />
+                </div>
+
+                <div className="toggle-group">
+                    <span className="toggle-label">🚫 Ocultar Rodapé neste bloco</span>
+                    <div
+                        className={`toggle ${config.hide_footer ? 'on' : ''}`}
+                        onClick={() => onUpdateConfig({ hide_footer: !config.hide_footer })}
+                    />
+                </div>
             </div>
 
             <div className="divider" />

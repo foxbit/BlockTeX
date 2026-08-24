@@ -327,6 +327,21 @@ export function BlockCard({
                                             📑 No Sumário
                                         </span>
                                     )}
+                                    {block.config?.vcenter && (
+                                        <span className="stat-pill" title="Texto centralizado verticalmente">
+                                            ↕️ Vertical
+                                        </span>
+                                    )}
+                                    {block.config?.hide_header && (
+                                        <span className="stat-pill" title="Cabeçalho oculto">
+                                            🚫 Sem Cabeçalho
+                                        </span>
+                                    )}
+                                    {block.config?.hide_footer && (
+                                        <span className="stat-pill" title="Rodapé oculto">
+                                            🚫 Sem Rodapé
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         )}

@@ -750,6 +750,16 @@ function generatePreamble(globalSetup, metadata) {
         mirror ? `  \\fancyfoot[LE,RO]{${fFontCmd}\\thepage}` : `  \\fancyfoot[C]{${fFontCmd}\\thepage}`,
         '  \\renewcommand{\\headrulewidth}{0pt}',
         '}',
+        '\\fancypagestyle{noheader}{',
+        '  \\fancyhf{}',
+        mirror ? `  \\fancyfoot[LE,RO]{${fFontCmd}\\thepage}` : `  \\fancyfoot[C]{${fFontCmd}\\thepage}`,
+        '  \\renewcommand{\\headrulewidth}{0pt}',
+        '}',
+        '\\fancypagestyle{nofooter}{',
+        '  \\fancyhf{}',
+        ...fancyLines.filter(l => l.includes('fancyhead')),
+        '  \\renewcommand{\\headrulewidth}{0pt}',
+        '}',
         '',
         '% ─── Hyperlinks & URLs ───────────────────────────────',
         '\\usepackage{url}',
@@ -815,16 +825,34 @@ function generatePreamble(globalSetup, metadata) {
 // ============================================================
 function blockToLatex(block, mirror = false) {
     const { type, content, config = {}, style_variables = {} } = block;
-    const { page_break, toc_visible = true } = config;
+    const { page_break, toc_visible = true, vcenter = false, hide_header = false, hide_footer = false } = config;
 
     let tex = '';
     const breakCmd = mirror ? '\\cleardoublepage' : '\\clearpage';
+
+    // Header & footer visibility for this block
+    if (hide_header && hide_footer) {
+        tex += '\\pagestyle{empty}\n';
+    } else if (hide_header) {
+        tex += '\\pagestyle{noheader}\n';
+    } else if (hide_footer) {
+        tex += '\\pagestyle{nofooter}\n';
+    } else {
+        tex += '\\pagestyle{fancy}\n';
+    }
 
     // Page break: isolated = cleardoublepage (starts on right/odd page)
     if (page_break === 'isolated') {
         tex += '\\cleardoublepage\n\n';
     } else if (page_break === 'before') {
         tex += `${breakCmd}\n\n`;
+    } else if (vcenter) {
+        tex += `${breakCmd}\n\n`;
+    }
+
+    // Vertical centering start
+    if (vcenter) {
+        tex += '\\vspace*{\\fill}\n\n';
     }
 
     switch (type) {
@@ -1148,6 +1176,11 @@ function blockToLatex(block, mirror = false) {
 
         default:
             tex += mdToLatex(content, config) + '\n';
+    }
+
+    // Vertical centering end
+    if (vcenter) {
+        tex += '\n\\vspace*{\\fill}\n' + `${breakCmd}\n`;
     }
 
     tex += '\n';
