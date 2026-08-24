@@ -410,16 +410,21 @@ function mdToLatex(md, config = {}) {
             continue;
         }
 
-        // ── Linha vazia ───────────────────────────────────────
-        if (line.trim() === '') {
+        // ── Linha vazia ou barra invertida isolada ────────────
+        if (line.trim() === '' || line.trim() === '\\\\') {
             output.push('');
             i++;
             continue;
         }
 
         // ── Parágrafo normal / recuado ─────────────────────────
-        const hspace = indentLevel > 0 ? `\\hspace*{${indentLevel * 1.5}em}` : '';
-        output.push(hspace + inlineToLatex(line));
+        const parsedLine = inlineToLatex(line);
+        if (parsedLine.trim() === '\\\\') {
+            output.push('');
+        } else {
+            const hspace = indentLevel > 0 ? `\\hspace*{${indentLevel * 1.5}em}` : '';
+            output.push(hspace + parsedLine);
+        }
         i++;
     }
 
@@ -751,18 +756,25 @@ function generatePreamble(globalSetup, metadata) {
 // ============================================================
 // Generate LaTeX for a single block
 // ============================================================
-function blockToLatex(block, mirror = false) {
+function blockToLatex(block, mirror = false, isFirstBlock = false) {
     const { type, content, config = {}, style_variables = {} } = block;
     const { page_break, toc_visible = true } = config;
 
     let tex = '';
     const breakCmd = mirror ? '\\cleardoublepage' : '\\clearpage';
 
-    // Page break: isolated = cleardoublepage (starts on right/odd page)
+    // Lógica de Paginação dos Blocos:
+    // Por padrão, cada bloco (Capítulo, Capa, Índices, etc.) inicia em uma nova página (\clearpage / \cleardoublepage),
+    // a menos que 'none_inline' seja configurado explicitamente pelo usuário.
     if (page_break === 'isolated') {
-        tex += '\\cleardoublepage\n\n';
-    } else if (page_break === 'before') {
-        tex += `${breakCmd}\n\n`;
+        if (!isFirstBlock) tex += '\\cleardoublepage\n\n';
+    } else if (page_break === 'none_inline') {
+        // Fluxo contínuo sem quebra
+    } else {
+        // Padrão ('before', 'auto' ou não especificado): inicia em nova página
+        if (!isFirstBlock) {
+            tex += `${breakCmd}\n\n`;
+        }
     }
 
     switch (type) {
@@ -1100,8 +1112,10 @@ export function generateTex(projectData) {
 
     let tex = generatePreamble(global_setup, metadata);
 
+    let isFirst = true;
     for (const block of blocks) {
-        tex += blockToLatex(block, global_setup.mirror);
+        tex += blockToLatex(block, global_setup.mirror, isFirst);
+        isFirst = false;
     }
 
     tex += '\n\\end{document}\n';

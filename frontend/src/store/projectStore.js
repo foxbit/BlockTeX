@@ -57,7 +57,7 @@ export function createBlock(type) {
         config: {
             toc_headers: { h1: true, h2: true, h3: false },
             toc_visible: true,
-            page_break: 'none', // 'none' | 'before' | 'isolated'
+            page_break: 'before', // 'before' | 'isolated' | 'none_inline'
         },
         collapsed: false,
     };
