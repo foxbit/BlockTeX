@@ -14,6 +14,8 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { Indent } from '../lib/indent.js';
 import { migrateBlockContent } from '../lib/migrateContent.js';
+import { formatHtml } from '../lib/formatHtml.js';
+import { CodeEditor } from './CodeEditor.jsx';
 import { PatchViewer, formatDate, changeTypeLabel, changeTypeBadgeClass } from './HistoryTab.jsx';
 import './HistoryTab.css';
 
@@ -702,10 +704,10 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
         }
     };
 
-    // Alterna para o modo código: popula o textarea com o HTML atual do editor
+    // Alterna para o modo código: popula o editor com o HTML atual do editor
     const handleSwitchToCode = () => {
         if (!editor) return;
-        setCodeValue(editor.getHTML());
+        setCodeValue(formatHtml(editor.getHTML()));
         setViewMode('code');
     };
 
@@ -716,11 +718,6 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
         setContent(codeValue);
         setHasUnsavedChanges(true);
         setViewMode('visual');
-    };
-
-    const handleCodeChange = (e) => {
-        setCodeValue(e.target.value);
-        setHasUnsavedChanges(true);
     };
 
     const handleImportMarkdown = (e) => {
@@ -902,28 +899,13 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
                 )}
 
                 <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', '--editor-zoom-level': `${fontSize}px` }}>
-                    <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                    <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: viewMode === 'code' ? '0' : '24px' }}>
                         {viewMode === 'code' ? (
-                            <textarea
-                                className="tiptap-code-editor"
+                            <CodeEditor
                                 value={codeValue}
-                                onChange={handleCodeChange}
-                                spellCheck={false}
-                                style={{
-                                    width: '100%',
-                                    minHeight: '100%',
-                                    background: 'var(--bg-secondary, #1e1e1e)',
-                                    color: 'var(--text-primary, #d4d4d4)',
-                                    fontFamily: 'var(--font-mono, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace)',
-                                    fontSize: '13px',
-                                    lineHeight: '1.6',
-                                    padding: '16px',
-                                    border: '1px solid var(--border-default)',
-                                    borderRadius: 'var(--radius-md)',
-                                    resize: 'none',
-                                    outline: 'none',
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-word'
+                                onChange={(newValue) => {
+                                    setCodeValue(newValue);
+                                    setHasUnsavedChanges(true);
                                 }}
                             />
                         ) : (
