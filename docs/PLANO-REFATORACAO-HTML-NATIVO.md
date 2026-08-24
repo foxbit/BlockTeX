@@ -3,6 +3,8 @@
 > **Branch:** `refactor/html-nativo`
 > **Data:** 2026-08-24
 > **Escopo:** Eliminar o formato Markdown intermediário (fonte dos bugs de renderização) e completar o editor TipTap com todas as suas ferramentas, com mapeamento fiel para LaTeX.
+>
+> **Status:** ✅ Fases 1, 2 e 4 concluídas e validadas (commit `4c91904`). Fases 3, 5 e 6 pendentes.
 
 ---
 
@@ -68,55 +70,50 @@ block.content  =  HTML  (persistido no SQLite, campo `blocks` JSON)
 
 ## 5. Fases de implementação
 
-### Fase 1 — Armazenamento HTML nativo
-- [ ] Remover `tiptap-markdown` e `Markdown.configure(...)`.
-- [ ] Remover `CustomHeading`/`CustomParagraph` (o `TextAlign` + `Heading`/`Paragraph` nativos já cobrem alinhamento via atributo `textAlign`).
-- [ ] `onUpdate`: trocar `editor.storage.markdown.getMarkdown()` → `editor.getHTML()`.
-- [ ] Re-inject (`useEffect` L864): trocar `getMarkdown()` → `getHTML()`.
-- [ ] `handleSave`: manter assinatura, agora recebendo HTML.
-- [ ] `handleExportMarkdown` → renomear para exportar HTML (ou manter export de Markdown via conversor HTML→MD separado — decidir na implementação; sugestão: exportar HTML, já que é o formato canônico).
-- [ ] Remover `sanitizeMarkdown` (não é mais necessário; se entidades HTML surgirem, o próprio `getHTML` as gerencia).
+### Fase 1 — Armazenamento HTML nativo ✅
+- [x] Remover `tiptap-markdown` e `Markdown.configure(...)`.
+- [x] Remover `CustomHeading`/`CustomParagraph`.
+- [x] `onUpdate`: `getMarkdown()` → `getHTML()`.
+- [x] Re-inject (`useEffect`): `getMarkdown()` → `getHTML()`.
+- [x] `handleSave`: assinatura mantida, agora recebendo HTML.
+- [x] `handleExportMarkdown` → exporta HTML (`.html`).
+- [x] Remover `sanitizeMarkdown`.
 
-### Fase 2 — Conversor único `htmlToLatex`
-- [ ] Criar `frontend/src/lib/htmlToLatex.js` com um *walk* no DOM (usando `DOMParser` do navegador, sem lib externa).
-- [ ] Mapear nós → LaTeX (ver tabela na Seção 6).
-- [ ] Preservar o preâmbulo (`generatePreamble`) e os blocos não-textuais (`blockToLatex` para IMAGE, IMAGE_GRID, TESTIMONIAL, TOC, SEPARATOR) — apenas o conteúdo textual dos blocos `chapter`/`content`/`quote`/`code`/`cover` passa pelo novo conversor.
-- [ ] `generateHtmlPreview`: usar `content` (HTML) diretamente — remover `markdownToHtml`.
-- [ ] `escapeLatex`/`escapeLatexTitle`: corrigir o **bug de ordem** (escapar `\` por último, ou usar placeholder, para não re-escapar `{}` dos comandos recém-gerados).
-- [ ] Deletar `mdToLatex`, `inlineToLatex`, `tableToLatex`, `listToLatex`, `markdownToHtml`.
+### Fase 2 — Conversor único `htmlToLatex` ✅
+- [x] `frontend/src/lib/htmlToLatex.js` (DOM walk, sem lib externa).
+- [x] Mapear nós → LaTeX (tabela Seção 6; riscado/marca-texto adiados para Fase 3 por falta de pacote no Alpine).
+- [x] `generateHtmlPreview` usa `content` HTML direto — removido `markdownToHtml`.
+- [x] `escapeLatex`/`escapeLatexTitle` corrigidos (bug de ordem → sem `\{}`).
+- [x] Deletados `mdToLatex`, `inlineToLatex`, `tableToLatex`, `listToLatex`, `markdownToHtml`.
 
-### Fase 3 — Editor TipTap completo (todas as ferramentas)
-Instalar extensões faltantes e ligá-las à toolbar + mapeamento LaTeX:
-- [ ] `@tiptap/extension-link` (já instalado) — **ligar na toolbar** (botão de link + popover de URL) e ao `htmlToLatex` (`\href`).
-- [ ] `@tiptap/extension-highlight` — destaque de texto.
+### Fase 3 — Editor TipTap completo (todas as ferramentas) ⏳
+- [ ] `@tiptap/extension-link` — ligar na toolbar + `\href` (já mapeado no conversor).
+- [ ] `@tiptap/extension-highlight` — destaque (requer pacote `soul` no Alpine).
 - [ ] `@tiptap/extension-text-style` + `@tiptap/extension-color` — cor do texto.
 - [ ] `@tiptap/extension-subscript` / `@tiptap/extension-superscript`.
 - [ ] `@tiptap/extension-task-list` + `@tiptap/extension-task-item` — checklists.
-- [ ] `@tiptap/extension-image` — imagem inline (complementa os blocos de imagem).
-- [ ] `@tiptap/extension-placeholder` — placeholder de edição.
-- [ ] `@tiptap/extension-character-count` — contagem (substitui o cálculo manual de palavras, ou coexiste).
-- [ ] `@tiptap/extension-typography` — aspas/reticências inteligentes.
-- [ ] `FloatingMenu` (já instalado) — se desejado, menu flutuante de bloco.
-- [ ] **Strike (riscado)**: adicionar mapeamento LaTeX (`\sout{}` via pacote `ulem` — hoje está na toolbar mas não converte).
-- [ ] Reorganizar a `MenuBar` com todos os grupos de botões (estilo, listas, alinhamento, inserir, recuo, link, cor, destaque, sub/super, tarefa, imagem).
+- [ ] `@tiptap/extension-image` — imagem inline.
+- [ ] `@tiptap/extension-placeholder`, `@tiptap/extension-character-count`, `@tiptap/extension-typography`.
+- [ ] **Riscado (`\sout`)** — requer instalar pacote `ulem` no Alpine (Dockerfile) antes de re-ativar no conversor.
+- [ ] Reorganizar a `MenuBar` com todos os grupos.
 
-### Fase 4 — Migração de dados (Markdown → HTML)
-- [ ] Função `migrateContentToHtml(markdown)`: usar `remark`+`rehype` (ou o próprio `tiptap-markdown` uma única vez, apenas no caminho de migração) para converter conteúdo legado → HTML.
-- [ ] Aplicar em `projectStore.loadProject` (detecção: `content` contém Markdown e não HTML — heurística: presença de `# `, `**`, ou ausência de tags `<p>`/`<h1>`).
-- [ ] Migrar também `default_content` em `blockTypes.js` para HTML.
-- [ ] Migrar autosave no `localStorage` e backups `.btx` importados.
+### Fase 4 — Migração de dados (Markdown → HTML) ✅
+- [x] `migrateContent.js` com `markdownToHtml` + limpeza reversa de backslashes espúrios (`cleanSpuriousEscapes`).
+- [x] Aplicado em `projectStore.loadProject` (detecção heurística).
+- [x] `default_content` em `blockTypes.js` migrado para HTML.
+- [x] Migração de importação `.md`/`.txt` no `handleImportMarkdown`.
 
-### Fase 5 — Consumidores do `content`
-- [ ] `Canvas.jsx`: `getBlockH1` (extrair `<h1>` via DOM), `getContentPreview` (strip de tags HTML), `getWordCount`/`getReadingTime` (contar texto visível).
-- [ ] `HistoryTab.jsx` `PatchViewer`: renderizar diffs de HTML (continuar mostrando texto plano via strip, ou diffs visuais).
-- [ ] `backend/database.js` `extractComparableContent`: diff de HTML funciona; garantir que campos `base64` seguem excluídos.
-- [ ] `AIPanel` (TipTapDrawer L1289, 1341): trocar `getMarkdown()` → `getHTML()`/`getText()` para texto enviado à IA e contagem.
+### Fase 5 — Consumidores do `content` 🔶 (parcial)
+- [x] `Canvas.jsx`: `getBlockH1`/`getContentPreview` parseiam HTML (novo `stripHtml`).
+- [ ] `HistoryTab.jsx` `PatchViewer`: avaliar renderização de diffs de HTML.
+- [ ] `backend/database.js` `extractComparableContent`: diff de HTML (funciona, mas revisar legibilidade).
 
-### Fase 6 — Verificação e testes
-- [ ] Compilar um documento de teste com **todos** os recursos: negrito, itálico, sublinhado, riscado, cor, destaque, sub/super, link, lista, checklist, tabela, código, imagem inline, alinhamentos, recuo.
-- [ ] Verificar os 3 bugs originais resolvidos: (1) sem `\{}`, (2) negrito persiste no reload, (3) espaços múltiplos preservados.
-- [ ] `npm run build` sem erros; `npm run lint`.
-- [ ] Testar migração de um projeto legado com Markdown.
+### Fase 6 — Verificação e testes 🔶 (parcial)
+- [x] Teste de migração com os 15 blocos reais do livro (backup) — sem perda de texto.
+- [x] Conversor validado: negrito, alinhamento, espaços, math, links, listas, tabelas, código.
+- [x] Compilação real do livro no container Docker — **0 erros**, PDF válido.
+- [ ] `npm run build` e `npm run lint` completos (o lint global tem 362 erros pré-existentes não relacionados).
+- [ ] Teste manual no navegador (editar bloco, recarregar, compilar).
 
 ---
 
