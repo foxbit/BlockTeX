@@ -185,16 +185,25 @@ function inlineToLatex(text) {
 
     // 9. Converte marcações Markdown (Negrito e Itálico) para comandos LaTeX APÓS o escape
     // Bold + Italic combinado (***texto***)
-    t = t.replace(/\*\*\*(.+?)\*\*\*/gs, (_, x) => `\\textbf{\\textit{${x}}}`);
+    t = t.replace(/\*\*\*(.+?)\*\*\*/gs, (_, x) => `{\\bfseries\\itshape ${x}}`);
     // Bold (**texto** ou __texto__)
-    t = t.replace(/\*\*(.+?)\*\*/gs, (_, x) => `\\textbf{${x}}`);
-    t = t.replace(/__(.+?)__/gs, (_, x) => `\\textbf{${x}}`);
+    t = t.replace(/\*\*(.+?)\*\*/gs, (_, x) => `{\\bfseries ${x}}`);
+    t = t.replace(/__(.+?)__/gs, (_, x) => `{\\bfseries ${x}}`);
     // Italic (*texto* ou _texto_)
-    t = t.replace(/\*(.+?)\*/gs, (_, x) => `\\textit{${x}}`);
-    t = t.replace(/(?<![a-zA-Z0-9])_([^_\n]+?)_(?![a-zA-Z0-9])/g, (_, x) => `\\textit{${x}}`);
+    t = t.replace(/\*(.+?)\*/gs, (_, x) => `{\\itshape ${x}}`);
+    t = t.replace(/(?<![a-zA-Z0-9])_([^_\n]+?)_(?![a-zA-Z0-9])/g, (_, x) => `{\\itshape ${x}}`);
 
     // Escapa underlines restantes
     t = t.replace(/_/g, '\\_');
+
+    // Restaura marcadores de negrito e itálico multilinhas
+    t = t
+        .replace(/@@BOLDITALICSTART@@/g, '{\\bfseries\\itshape ')
+        .replace(/@@BOLDITALICEND@@/g, '}')
+        .replace(/@@BOLDSTART@@/g, '{\\bfseries ')
+        .replace(/@@BOLDEND@@/g, '}')
+        .replace(/@@ITALICSTART@@/g, '{\\itshape ')
+        .replace(/@@ITALICEND@@/g, '}');
 
     // 10. Restaura placeholders
     t = t.replace(/\[([^\]]+)\]\(\x00URL(\d+)\x00\)/g, (_, label, urlId) => {
@@ -256,10 +265,22 @@ function mdToLatex(md, config = {}) {
     // Remove as tags div das marcações virtuais (flags) para que não apareçam no PDF
     let cleanMd = md.replace(/<div[^>]*data-type="virtual-flag"[\s\S]*?>[\s\S]*?<\/div>/g, '');
 
-    // Converte quebras de linha HTML <br> em \\
+    // 1. Remove barras invertidas de colchetes escapados desnecessários \[ e \] no texto normal
+    cleanMd = cleanMd.replace(/\\\[/g, '[').replace(/\\\]/g, ']');
+
+    // 2. Converte quebras de linha HTML <br> em \\
     cleanMd = cleanMd.replace(/<br\s*\/?>/gi, ' \\\\\n');
 
-    // Normaliza parágrafos com recuo <p data-indent="N">...</p> (multilinha/monolinha)
+    // 3. Pre-processa negrito e itálico multilinhas no documento antes de dividir em linhas
+    cleanMd = cleanMd.replace(/\*\*\*(.+?)\*\*\*/g, (_, m) => `@@BOLDITALICSTART@@${m}@@BOLDITALICEND@@`);
+    cleanMd = cleanMd.replace(/\*\*([\s\S]+?)\*\*/g, (_, m) => {
+        if (m.includes('\n\n')) return `**${m}**`;
+        return `@@BOLDSTART@@${m}@@BOLDEND@@`;
+    });
+    cleanMd = cleanMd.replace(/__(.+?)__/g, (_, m) => `@@BOLDSTART@@${m}@@BOLDEND@@`);
+    cleanMd = cleanMd.replace(/(?<!\*)\*([^\*\n]+?)\*(?!\*)/g, (_, m) => `@@ITALICSTART@@${m}@@ITALICEND@@`);
+
+    // 4. Normaliza parágrafos com recuo <p data-indent="N">...</p> (multilinha/monolinha)
     cleanMd = cleanMd.replace(/<p\s+data-indent="(\d+)"[^>]*>([\s\S]*?)<\/p>/gi, (match, levelStr, innerText) => {
         const level = parseInt(levelStr, 10);
         return `\n\x00INDENT:${level}\x00${innerText.trim()}\n`;
@@ -288,7 +309,8 @@ function mdToLatex(md, config = {}) {
             const codeLines = [];
             i++;
             while (i < lines.length && !lines[i].startsWith('```')) {
-                codeLines.push(lines[i]);
+                // Sanitiza escapes residuais dentro do código
+                codeLines.push(lines[i].replace(/\\\[/g, '[').replace(/\\\]/g, ']').replace(/\\\s*$/g, ''));
                 i++;
             }
             i++; // fecha ```
@@ -358,18 +380,9 @@ function mdToLatex(md, config = {}) {
                 output.push(`\\markright{${title}}`);
             }
 
-            const tocHeaders = config.toc_headers || { h1: true, h2: true, h3: false };
-            const isVisible = config.toc_visible !== false;
-
-            // Adiciona ao TOC manualmente, respeitando as marcações de Checkbox
-            if (isVisible) {
-                const shouldCapture = (level === 1 && tocHeaders.h1 !== false) ||
-                    (level === 2 && tocHeaders.h2) ||
-                    (level === 3 && tocHeaders.h3);
-                if (shouldCapture) {
-                    const tocLevel = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
-                    output.push(`\\addcontentsline{toc}{${tocLevel}}{${title}}`);
-                }
+            if (config.toc_headers && config.toc_headers[`h${level}`]) {
+                const tocTitle = escapeLatexTitle(rawTitle);
+                output.push(`\\addcontentsline{toc}{${cmd}}{${tocTitle}}`);
             }
 
             i++;
@@ -419,6 +432,7 @@ function mdToLatex(md, config = {}) {
 
         // ── Parágrafo normal / recuado ─────────────────────────
         const parsedLine = inlineToLatex(line);
+
         if (parsedLine.trim() === '\\\\') {
             output.push('');
         } else {
