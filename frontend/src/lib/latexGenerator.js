@@ -137,7 +137,8 @@ function inlineToLatex(text) {
         return `[${label}](\x00URL${urlPlaceholders.length - 1}\x00)`;
     });
 
-    // 4. Protege quebras de linha manuais (<br> ou \\)
+    // 4. Protege quebras de linha manuais (barra invertida '\' no final da linha, <br> ou \\)
+    t = t.replace(/\\\s*(\r?\n|$)/g, '\x00BREAK\x00$1');
     t = t.replace(/<br\s*\/?>/gi, '\x00BREAK\x00');
     t = t.replace(/\\\\/g, '\x00BREAK\x00');
 
