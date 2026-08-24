@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BLOCK_TYPES, BLOCK_TYPE_META } from '../lib/blockTypes.js';
+import { migrateBlockContent } from '../lib/migrateContent.js';
 
 // ============================================================
 // Default project structure
@@ -263,6 +264,11 @@ export class ProjectStore {
                         ...(b.style_variables || {}),
                         gridLayout: 'stacked',
                     };
+                }
+
+                // Migração de formato de conteúdo: Markdown legado → HTML nativo
+                if (typeof b.content === 'string' && b.content) {
+                    b.content = migrateBlockContent(b.content);
                 }
             });
         }

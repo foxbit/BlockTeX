@@ -3,10 +3,6 @@ import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from
 import { Node, Extension, mergeAttributes } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
-import Heading from '@tiptap/extension-heading';
-import Paragraph from '@tiptap/extension-paragraph';
-import { Markdown } from 'tiptap-markdown';
-import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { diffWords } from 'diff';
 import { useBackend } from '../hooks/useBackend.js';
@@ -16,12 +12,12 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
+import { Indent } from '../lib/indent.js';
+import { migrateBlockContent } from '../lib/migrateContent.js';
 import { PatchViewer, formatDate, changeTypeLabel, changeTypeBadgeClass } from './HistoryTab.jsx';
 import './HistoryTab.css';
 
-// Sanitiza a saída Markdown do TipTap, removendo entidades HTML
-// que o ProseMirror às vezes injeta (ex: "> " vira "&gt; ").
-// Isso mantém o conteúdo armazenado como Markdown puro.
+// Sanitiza a saída HTML do TipTap (entidades HTML são mantidas pelo getHTML)
 const textBubbleMenuKey = new PluginKey('textBubbleMenu');
 const tableBubbleMenuKey = new PluginKey('tableBubbleMenu');
 
@@ -163,186 +159,6 @@ const VirtualFlag = Node.create({
         };
     },
 });
-
-const Indent = Extension.create({
-    name: 'indent',
-
-    addOptions() {
-        return {
-            types: ['paragraph', 'heading', 'blockquote'],
-            minLevel: 0,
-            maxLevel: 8,
-        };
-    },
-
-    addGlobalAttributes() {
-        return [
-            {
-                types: this.options.types,
-                attributes: {
-                    indentLevel: {
-                        default: 0,
-                        parseHTML: element => {
-                            const levelAttr = element.getAttribute('data-indent');
-                            if (levelAttr) {
-                                const parsed = parseInt(levelAttr, 10);
-                                return isNaN(parsed) ? 0 : parsed;
-                            }
-                            return 0;
-                        },
-                        renderHTML: attributes => {
-                            if (!attributes.indentLevel || attributes.indentLevel <= 0) {
-                                return {};
-                            }
-                            return {
-                                'data-indent': attributes.indentLevel,
-                            };
-                        },
-                    },
-                },
-            },
-        ];
-    },
-
-    addCommands() {
-        return {
-            indent: () => ({ tr, state, dispatch, editor }) => {
-                if (editor.can().sinkListItem('listItem')) {
-                    return editor.commands.sinkListItem('listItem');
-                }
-                const { selection } = state;
-                const { from, to } = selection;
-                let updated = false;
-
-                state.doc.nodesBetween(from, to, (node, pos) => {
-                    if (this.options.types.includes(node.type.name)) {
-                        const currentLevel = node.attrs.indentLevel || 0;
-                        const nextLevel = Math.min(currentLevel + 1, this.options.maxLevel);
-                        if (nextLevel !== currentLevel) {
-                            if (dispatch) {
-                                tr.setNodeMarkup(pos, undefined, {
-                                    ...node.attrs,
-                                    indentLevel: nextLevel,
-                                });
-                            }
-                            updated = true;
-                        }
-                    }
-                });
-
-                return updated;
-            },
-            outdent: () => ({ tr, state, dispatch, editor }) => {
-                if (editor.can().liftListItem('listItem')) {
-                    return editor.commands.liftListItem('listItem');
-                }
-                const { selection } = state;
-                const { from, to } = selection;
-                let updated = false;
-
-                state.doc.nodesBetween(from, to, (node, pos) => {
-                    if (this.options.types.includes(node.type.name)) {
-                        const currentLevel = node.attrs.indentLevel || 0;
-                        const nextLevel = Math.max(currentLevel - 1, this.options.minLevel);
-                        if (nextLevel !== currentLevel) {
-                            if (dispatch) {
-                                tr.setNodeMarkup(pos, undefined, {
-                                    ...node.attrs,
-                                    indentLevel: nextLevel,
-                                });
-                            }
-                            updated = true;
-                        }
-                    }
-                });
-
-                return updated;
-            },
-        };
-    },
-
-    addKeyboardShortcuts() {
-        return {
-            'Tab': () => this.editor.commands.indent(),
-            'Shift-Tab': () => this.editor.commands.outdent(),
-        };
-    },
-});
-
-const CustomHeading = Heading.extend({
-    addStorage() {
-        return {
-            ...this.parent?.(),
-            markdown: {
-                serialize(state, node) {
-                    const align = node.attrs.textAlign;
-                    if (align && align !== 'left') {
-                        const level = node.attrs.level || 1;
-                        state.write(`<h${level} align="${align}">`);
-                        state.renderInline(node);
-                        state.write(`</h${level}>`);
-                        state.closeBlock(node);
-                    } else {
-                        state.write(state.repeat('#', node.attrs.level) + ' ');
-                        state.renderInline(node);
-                        state.closeBlock(node);
-                    }
-                },
-                parse: {
-                    // handled by HTML parser
-                }
-            }
-        };
-    }
-});
-
-const CustomParagraph = Paragraph.extend({
-    addStorage() {
-        return {
-            ...this.parent?.(),
-            markdown: {
-                serialize(state, node) {
-                    const align = node.attrs.textAlign;
-                    const indent = node.attrs.indentLevel || 0;
-                    let openTag = '';
-                    let closeTag = '';
-                    if (align && align !== 'left' && indent > 0) {
-                        openTag = `<p data-indent="${indent}" align="${align}">`;
-                        closeTag = `</p>`;
-                    } else if (align && align !== 'left') {
-                        openTag = `<p align="${align}">`;
-                        closeTag = `</p>`;
-                    } else if (indent > 0) {
-                        openTag = `<p data-indent="${indent}">`;
-                        closeTag = `</p>`;
-                    }
-
-                    if (openTag) {
-                        state.write(openTag);
-                        state.renderInline(node);
-                        state.write(closeTag);
-                        state.closeBlock(node);
-                    } else {
-                        state.renderInline(node);
-                        state.closeBlock(node);
-                    }
-                },
-                parse: {
-                    // handled by HTML parser
-                }
-            }
-        };
-    }
-});
-
-function sanitizeMarkdown(md) {
-    return md
-        .replace(/&gt;/g, '>')
-        .replace(/&lt;/g, '<')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'");
-}
 
 // Busca de ocorrências no texto (declarada fora para evitar problemas de hoisting)
 const findMatches = (doc, term) => {
@@ -523,7 +339,7 @@ const MenuBar = ({ editor, onImportClick, onExportClick, onZoomIn, onZoomOut, fo
                 <button
                     onClick={onImportClick}
                     className="toolbar-btn"
-                    title="Importar Arquivo Markdown"
+                    title="Importar Arquivo Markdown (convertido para HTML)"
                     style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', fontWeight: 'normal' }}
                 >
                     📥 Importar MD
@@ -531,10 +347,10 @@ const MenuBar = ({ editor, onImportClick, onExportClick, onZoomIn, onZoomOut, fo
                 <button
                     onClick={onExportClick}
                     className="toolbar-btn"
-                    title="Exportar Arquivo Markdown"
+                    title="Exportar HTML"
                     style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px', fontWeight: 'normal' }}
                 >
-                    📤 Exportar MD
+                    📤 Exportar HTML
                 </button>
             </div>
 
@@ -715,21 +531,11 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
 
     const editor = useEditor({
         extensions: [
-            StarterKit.configure({
-                heading: false,
-                paragraph: false,
-            }),
-            CustomHeading.configure({ levels: [1, 2, 3, 4] }),
-            CustomParagraph,
-            Underline,
+            StarterKit,
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
             }),
             Indent,
-            Markdown.configure({
-                html: true,
-                transformPastedText: true,
-            }),
             Table.configure({
                 resizable: true,
             }),
@@ -740,8 +546,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
         ],
         content: block?.content || '',
         onUpdate: ({ editor }) => {
-            const markdownOutput = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
-            setContent(markdownOutput);
+            setContent(editor.getHTML());
             setHasUnsavedChanges(true);
         },
         onSelectionUpdate: () => {
@@ -864,8 +669,8 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
     // Re-inject content when switching blocks if the editor instance survived
     useEffect(() => {
         if (editor && block && open) {
-            const currentMarkdown = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
-            if (block.content !== currentMarkdown) {
+            const currentHtml = editor.getHTML();
+            if (block.content !== currentHtml) {
                 editor.commands.setContent(block.content || '');
             }
         }
@@ -892,7 +697,9 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
         reader.onload = (event) => {
             const text = event.target.result;
             if (editor) {
-                editor.commands.setContent(text);
+                // Arquivos .md/.txt legados são convertidos para HTML antes de inserir
+                const html = migrateBlockContent(text);
+                editor.commands.setContent(html);
                 setHasUnsavedChanges(true);
             }
         };
@@ -902,14 +709,14 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
 
     const handleExportMarkdown = () => {
         if (!editor) return;
-        const markdown = sanitizeMarkdown(editor.storage.markdown.getMarkdown());
-        const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8;" });
+        const html = editor.getHTML();
+        const blob = new Blob([html], { type: "text/html;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
         
         const blockIdShort = block?.id ? block.id.split('-')[0] : 'bloco';
-        const filename = `block-${blockIdShort}.md`;
+        const filename = `block-${blockIdShort}.html`;
         
         link.setAttribute("download", filename);
         document.body.appendChild(link);
@@ -1286,7 +1093,7 @@ function AIPanel({ editor, block, globalSetup, projectId, historyRefreshTrigger 
             const selectedText = state.doc.textBetween(from, to, ' ');
             return { text: selectedText, isSel: true };
         }
-        return { text: editor.storage.markdown.getMarkdown(), isSel: false };
+        return { text: editor.getText(), isSel: false };
     };
 
     const handleGenerate = async () => {
@@ -1310,10 +1117,12 @@ function AIPanel({ editor, block, globalSetup, projectId, historyRefreshTrigger 
     };
 
     const handleApply = () => {
+        // A IA retorna Markdown; converte para HTML antes de inserir no editor
+        const html = migrateBlockContent(suggestedText);
         if (isSelection) {
-            editor.chain().focus().insertContent(suggestedText).run();
+            editor.chain().focus().insertContent(html).run();
         } else {
-            editor.chain().focus().setContent(suggestedText).run();
+            editor.chain().focus().setContent(html).run();
         }
         setShowDiff(false);
         setPrompt('');
@@ -1338,9 +1147,9 @@ function AIPanel({ editor, block, globalSetup, projectId, historyRefreshTrigger 
 
     const differences = showDiff ? diffWords(originalText, suggestedText) : [];
 
-    const rawMd = editor.storage.markdown.getMarkdown();
-    const wordCount = rawMd.split(/\s+/).filter(Boolean).length;
-    const charCount = rawMd.length;
+    const rawText = editor.getText();
+    const wordCount = rawText.split(/\s+/).filter(Boolean).length;
+    const charCount = rawText.length;
     
     // Calcula estimativa avançada de páginas com base no globalSetup
     const getEstimatedPages = () => {

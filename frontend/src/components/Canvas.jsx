@@ -2,6 +2,19 @@ import { useState, useRef, useCallback } from 'react';
 import { BLOCK_TYPE_META, BLOCK_TYPES } from '../lib/blockTypes.js';
 
 // ─── Markdown Preview / Stats Helper ───────────────────────────
+// Remove tags HTML, preservando o texto (para previews e contagem)
+function stripHtml(html) {
+    if (!html) return '';
+    return String(html)
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;|&apos;/g, "'");
+}
+
 function getReadingTime(text) {
     const words = text.trim().split(/\s+/).length;
     const minutes = Math.ceil(words / 200);
@@ -57,15 +70,20 @@ export function BlockCard({
 
     const getBlockH1 = () => {
         const text = block.content || '';
-        const match = text.match(/^#\s+(.+)$/m);
-        return match ? match[1].replace(/[*_`]/g, '').trim() : null;
+        // Conteúdo agora é HTML nativo — extrai o texto do primeiro <h1>
+        const match = text.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+        if (match) return stripHtml(match[1]);
+        // Fallback para conteúdo legado em texto puro
+        const mdMatch = text.match(/^#\s+(.+)$/m);
+        return mdMatch ? mdMatch[1].replace(/[*_`]/g, '').trim() : null;
     };
 
     const getContentPreview = () => {
         const text = block.content || '';
-        const hasH1 = /^#\s+(.+)$/m.test(text);
-        const cleanedText = hasH1 ? text.replace(/^#\s+.+$/m, '') : text;
-        const preview = cleanedText.replace(/[*_`]/g, '').replace(/\n/g, ' ').trim();
+        // Remove o primeiro <h1> (título) se houver, depois limpa tags HTML
+        let cleaned = text.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
+        cleaned = stripHtml(cleaned);
+        const preview = cleaned.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
         return preview.substring(0, 100) + (preview.length > 100 ? '…' : '');
     };
 

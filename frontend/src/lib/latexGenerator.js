@@ -1,500 +1,5 @@
 import { BLOCK_TYPES, PAPER_SIZES } from './blockTypes.js';
-
-// ============================================================
-// Remove emojis e símbolos pictográficos que o pdflatex não suporta.
-// IMPORTANTE: não remover caracteres latinos acentuados (á, ã, é, etc.)
-// ============================================================
-function stripEmojis(str) {
-    if (!str) return str;
-    return str
-        // Planos suplementares: U+10000–U+10FFFF (emojis, símbolos extras)
-        // Requer flag 'u' para funcionar com surrogate pairs
-        .replace(/[\u{10000}-\u{10FFFF}]/gu, '')
-        // Bloco de Emoticons e Símbolos Miscelâneos no BMP (cuidado: não usar ranges amplos!)
-        // Apenas os blocos confirmados de emoji/pictogramas:
-        .replace(/[\uD800-\uDFFF]/g, '')   // Surrogate halves soltos
-        .replace(/[\u{1F000}-\u{1FFFF}]/gu, '') // Emojis estendidos (redundante com linha 1, mas seguro)
-        // Variation selectors (modificadores de emoji, invisíveis mas problemáticos)
-        .replace(/[\uFE00-\uFE0F]/g, '');
-}
-
-// ============================================================
-// Escapa caracteres LaTeX especiais (EXCETO math modes)
-// ============================================================
-function escapeLatex(str, insideMath = false) {
-    if (insideMath) return str; // Não escapar dentro de math
-    str = stripEmojis(str);
-    return str
-        .replace(/\\/g, '\\textbackslash{}')
-        .replace(/&/g, '\\&')
-        .replace(/%/g, '\\%')
-        .replace(/#/g, '\\#')
-        .replace(/\^/g, '\\^{}')
-        .replace(/~/g, '\\textasciitilde{}')
-        .replace(/</g, '\\textless{}')
-        .replace(/>/g, '\\textgreater{}')
-        .replace(/\$/g, '\\$')
-        .replace(/_/g, '\\_')
-        .replace(/\{/g, '\\{')
-        .replace(/\}/g, '\\}');
-}
-
-// Escapa apenas para uso em argumentos de comandos LaTeX (títulos, etc.)
-function escapeLatexTitle(str) {
-    str = stripEmojis(str);
-    // IMPORTANTE: '\\' deve ser escapado PRIMEIRO — caso contrário os
-    // escapes seguintes re-introduzem '\\' que seria re-processado.
-    return str
-        .replace(/\\/g, '\\textbackslash{}')
-        .replace(/&/g, '\\&')
-        .replace(/%/g, '\\%')
-        .replace(/#/g, '\\#')
-        .replace(/~/g, '\\textasciitilde{}')
-        .replace(/</g, '\\textless{}')
-        .replace(/>/g, '\\textgreater{}')
-        .replace(/\$/g, '\\$')
-        .replace(/_/g, '\\_')
-        .replace(/\{/g, '\\{')
-        .replace(/\}/g, '\\}');
-}
-
-// ============================================================
-// Converte tabela Markdown GFM para LaTeX
-// ============================================================
-function tableToLatex(tableText) {
-    const lines = tableText.trim().split('\n').filter(l => l.trim());
-    if (lines.length < 2) return tableText;
-
-    // Parseia as células da linha (remove pipes externos)
-    const parseCells = (line) =>
-        line.replace(/^\|/, '').replace(/\|$/, '')
-            .split('|')
-            .map(c => c.trim());
-
-    const headers = parseCells(lines[0]);
-    const sep = lines[1]; // linha com ---
-    const rows = lines.slice(2).map(parseCells);
-
-    // Detecta alinhamento
-    const aligns = parseCells(sep).map(c => {
-        if (c.startsWith(':') && c.endsWith(':')) return 'c';
-        if (c.endsWith(':')) return 'r';
-        return 'l';
-    });
-
-    const colSpec = aligns.map(a => {
-        if (a === 'c') return '>{\\centering\\arraybackslash}X';
-        if (a === 'r') return '>{\\raggedleft\\arraybackslash}X';
-        return '>{\\raggedright\\arraybackslash}X';
-    }).join('|');
-    const headerRow = headers.map(h => inlineToLatex(h)).join(' & ');
-    const bodyRows = rows.map(r =>
-        r.map((c, i) => inlineToLatex(c || '')).join(' & ')
-    ).join(' \\\\\ \n');
-
-    return [
-        `\\begin{table}[H]`,
-        `  \\centering`,
-        `  \\begin{tabularx}{\\textwidth}{|${colSpec}|}`,
-        `    \\hline`,
-        `    ${headerRow} \\\\`,
-        `    \\hline`,
-        bodyRows ? `    ${bodyRows} \\\\` : '',
-        `    \\hline`,
-        `  \\end{tabularx}`,
-        `\\end{table}`,
-    ].filter(Boolean).join('\n');
-}
-
-// ============================================================
-// Converte inline markdown (bold, italic, code, math, links)
-// ============================================================
-function inlineToLatex(text) {
-    let t = stripEmojis(text);
-
-    // 1. Protege math inline $...$ antes de escapar
-    const mathPlaceholders = [];
-    t = t.replace(/\$\$([\s\S]+?)\$\$/g, (_, m) => {
-        mathPlaceholders.push(`\\[${m}\\]`);
-        return `\x00MATH${mathPlaceholders.length - 1}\x00`;
-    });
-    t = t.replace(/(?<!\\)\$([^\$\n]+?)\$(?!\$)/g, (_, m) => {
-        mathPlaceholders.push(`$${m}$`);
-        return `\x00MATH${mathPlaceholders.length - 1}\x00`;
-    });
-
-    // 2. Protege código inline `...`
-    const codePlaceholders = [];
-    t = t.replace(/`([^`]+)`/g, (_, c) => {
-        codePlaceholders.push(`\\texttt{${c.replace(/[{}]/g, '\\$&')}}`);
-        return `\x00CODE${codePlaceholders.length - 1}\x00`;
-    });
-
-    // 3. Protege URLs em links [texto](url)
-    const urlPlaceholders = [];
-    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
-        urlPlaceholders.push(url);
-        return `[${label}](\x00URL${urlPlaceholders.length - 1}\x00)`;
-    });
-
-    // 4. Protege quebras de linha manuais (barra invertida '\' no final da linha, <br> ou \\)
-    t = t.replace(/\\\s*(\r?\n|$)/g, '\x00BREAK\x00$1');
-    t = t.replace(/<br\s*\/?>/gi, '\x00BREAK\x00');
-    t = t.replace(/\\\\/g, '\x00BREAK\x00');
-
-    // 5. Protege underline <u> em placeholder para não ter chaves escapadas precocemente
-    const underlinePlaceholders = [];
-    t = t.replace(/<u>([\s\S]+?)<\/u>/gi, (_, x) => {
-        underlinePlaceholders.push(x);
-        return `\x00UNDERLINE${underlinePlaceholders.length - 1}\x00`;
-    });
-
-    // 6. Converte tags de formatação HTML em Markdown puro antes do escape
-    t = t.replace(/<(strong|b)>([\s\S]+?)<\/\1>/gi, (_, __, x) => `**${x}**`);
-    t = t.replace(/<(em|i)>([\s\S]+?)<\/\1>/gi, (_, __, x) => `*${x}*`);
-
-    // 7. [LEGACY] Protege entidades HTML remanescentes de projetos antigos
-    const entityPlaceholders = [];
-    t = t.replace(/&(amp|lt|gt|quot|apos);/g, (match) => {
-        const map = {
-            '&amp;':  '\\&',
-            '&lt;':   '\\textless{}',
-            '&gt;':   '\\textgreater{}',
-            '&quot;': '"',
-            '&apos;': "'",
-        };
-        entityPlaceholders.push(map[match] || match);
-        return `\x00ENTITY${entityPlaceholders.length - 1}\x00`;
-    });
-
-    // Preserva espaços múltiplos consecutivos e espaços não-quebráveis (Unicode 0x00A0 / &nbsp;)
-    t = t.replace(/&nbsp;/gi, '\x00NBSP\x00');
-    t = t.replace(/[\u00A0\xa0]/g, '\x00NBSP\x00');
-    t = t.replace(/ {2,}/g, match => ' ' + '\x00NBSP\x00'.repeat(match.length - 1));
-
-    // 8. Escapa caracteres especiais do LaTeX no texto normal
-    t = t
-        .replace(/\\/g, '\\textbackslash{}')
-        .replace(/&/g, '\\&')
-        .replace(/%(?!\x00)/g, '\\%')
-        .replace(/#/g, '\\#')
-        .replace(/~/g, '\\textasciitilde{}')
-        .replace(/\$/g, '\\$')
-        .replace(/\{/g, '\\{')
-        .replace(/\}/g, '\\}');
-
-    // 9. Converte marcações Markdown (Negrito e Itálico) para comandos LaTeX APÓS o escape
-    // Bold + Italic combinado (***texto***)
-    t = t.replace(/\*\*\*(.+?)\*\*\*/gs, (_, x) => `{\\bfseries\\itshape ${x}}`);
-    // Bold (**texto** ou __texto__)
-    t = t.replace(/\*\*(.+?)\*\*/gs, (_, x) => `{\\bfseries ${x}}`);
-    t = t.replace(/__(.+?)__/gs, (_, x) => `{\\bfseries ${x}}`);
-    // Italic (*texto* ou _texto_)
-    t = t.replace(/\*(.+?)\*/gs, (_, x) => `{\\itshape ${x}}`);
-    t = t.replace(/(?<![a-zA-Z0-9])_([^_\n]+?)_(?![a-zA-Z0-9])/g, (_, x) => `{\\itshape ${x}}`);
-
-    // Escapa underlines restantes
-    t = t.replace(/_/g, '\\_');
-
-    // Restaura marcadores de negrito e itálico multilinhas
-    t = t
-        .replace(/@@BOLDITALICSTART@@/g, '{\\bfseries\\itshape ')
-        .replace(/@@BOLDITALICEND@@/g, '}')
-        .replace(/@@BOLDSTART@@/g, '{\\bfseries ')
-        .replace(/@@BOLDEND@@/g, '}')
-        .replace(/@@ITALICSTART@@/g, '{\\itshape ')
-        .replace(/@@ITALICEND@@/g, '}');
-
-    // 10. Restaura placeholders
-    t = t.replace(/\[([^\]]+)\]\(\x00URL(\d+)\x00\)/g, (_, label, urlId) => {
-        const url = urlPlaceholders[+urlId];
-        return `\\href{${url}}{${label}}`;
-    });
-    t = t.replace(/\x00UNDERLINE(\d+)\x00/g, (_, i) => `\\underline{${underlinePlaceholders[+i]}}`);
-    t = t.replace(/\x00ENTITY(\d+)\x00/g, (_, i) => entityPlaceholders[+i]);
-    t = t.replace(/\x00CODE(\d+)\x00/g, (_, i) => codePlaceholders[+i]);
-    t = t.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathPlaceholders[+i]);
-    t = t.replace(/\x00BREAK\x00/g, ' \\\\');
-    t = t.replace(/\x00NBSP\x00/g, '~');
-
-    return t;
-}
-
-// ============================================================
-// Converte listas (unordered e ordered) com suporte a sub-listas
-// ============================================================
-function listToLatex(lines, baseIndent = 0) {
-    const items = [];
-    let i = 0;
-    while (i < lines.length) {
-        const line = lines[i];
-        const indent = line.search(/\S/);
-        if (indent < baseIndent) break;
-
-        const orderedMatch = line.trim().match(/^(\d+)\. (.*)/);
-        const unorderedMatch = line.trim().match(/^[-*+] (.*)/);
-
-        if (!orderedMatch && !unorderedMatch) { i++; continue; }
-
-        const content = orderedMatch ? orderedMatch[2] : unorderedMatch[1];
-        const subLines = [];
-        let j = i + 1;
-        while (j < lines.length && lines[j].search(/\S/) > indent) {
-            subLines.push(lines[j]);
-            j++;
-        }
-        const sub = subLines.length ? '\n' + listToLatex(subLines, indent + 2) : '';
-        items.push({ content, ordered: !!orderedMatch, sub });
-        i = j;
-    }
-
-    if (items.length === 0) return '';
-    const allOrdered = items.every(it => it.ordered);
-    const env = allOrdered ? 'enumerate' : 'itemize';
-    const body = items.map(it =>
-        `  \\item ${inlineToLatex(it.content)}${it.sub}`
-    ).join('\n');
-    return `\\begin{${env}}\n${body}\n\\end{${env}}`;
-}
-
-// ============================================================
-// Conversor Markdown → LaTeX completo
-// ============================================================
-function mdToLatex(md, config = {}) {
-    if (!md) return '';
-    // Remove as tags div das marcações virtuais (flags) para que não apareçam no PDF
-    let cleanMd = md.replace(/<div[^>]*data-type="virtual-flag"[\s\S]*?>[\s\S]*?<\/div>/g, '');
-
-    // 1. Remove barras invertidas de colchetes escapados desnecessários \[ e \] no texto normal
-    cleanMd = cleanMd.replace(/\\\[/g, '[').replace(/\\\]/g, ']');
-
-    // 2. Converte quebras de linha HTML <br> em \\
-    cleanMd = cleanMd.replace(/<br\s*\/?>/gi, ' \\\\');
-
-    // 3. Pre-processa negrito e itálico multilinhas no documento antes de dividir em linhas
-    cleanMd = cleanMd.replace(/\*\*\*(.+?)\*\*\*/g, (_, m) => `@@BOLDITALICSTART@@${m}@@BOLDITALICEND@@`);
-    cleanMd = cleanMd.replace(/\*\*([\s\S]+?)\*\*/g, (_, m) => {
-        if (m.includes('\n\n')) return `**${m}**`;
-        return `@@BOLDSTART@@${m}@@BOLDEND@@`;
-    });
-    cleanMd = cleanMd.replace(/__(.+?)__/g, (_, m) => `@@BOLDSTART@@${m}@@BOLDEND@@`);
-    cleanMd = cleanMd.replace(/(?<!\*)\*([^\*\n]+?)\*(?!\*)/g, (_, m) => `@@ITALICSTART@@${m}@@ITALICEND@@`);
-
-    // 4. Normaliza títulos/headings com alinhamento: <hN align="center">...</hN> ou <hN style="text-align: center">...</hN>
-    cleanMd = cleanMd.replace(/<h([1-4])\s+[^>]*align="(center|right|left|justify)"[^>]*>([\s\S]*?)<\/h\1>/gi, (match, levelStr, align, titleText) => {
-        const level = parseInt(levelStr, 10);
-        const hashes = '#'.repeat(level);
-        return `\n\x00ALIGN:${align.toLowerCase()}\x00${hashes} ${titleText.trim()}\n`;
-    });
-
-    cleanMd = cleanMd.replace(/<h([1-4])\s+[^>]*style="[^"]*text-align:\s*(center|right|left|justify)[^"]*"[^>]*>([\s\S]*?)<\/h\1>/gi, (match, levelStr, align, titleText) => {
-        const level = parseInt(levelStr, 10);
-        const hashes = '#'.repeat(level);
-        return `\n\x00ALIGN:${align.toLowerCase()}\x00${hashes} ${titleText.trim()}\n`;
-    });
-
-    // 5. Normaliza parágrafos com recuo e/ou alinhamento: <p data-indent="N" align="center">...</p> ou <p align="center">...</p>
-    cleanMd = cleanMd.replace(/<p\s+[^>]*>([\s\S]*?)<\/p>/gi, (match, innerText) => {
-        const indentMatch = match.match(/data-indent="(\d+)"/i);
-        const alignMatch = match.match(/align="(center|right|left|justify)"/i) || match.match(/style="[^"]*text-align:\s*(center|right|left|justify)/i);
-        const indent = indentMatch ? parseInt(indentMatch[1], 10) : 0;
-        const align = alignMatch ? alignMatch[1].toLowerCase() : '';
-
-        let prefix = '';
-        if (indent > 0) prefix += `\x00INDENT:${indent}\x00`;
-        if (align) prefix += `\x00ALIGN:${align}\x00`;
-
-        return `\n${prefix}${innerText.trim()}\n`;
-    });
-
-    // Remove tags <p> e </p> genéricas remanescentes
-    cleanMd = cleanMd.replace(/<\/?p[^>]*>/gi, '\n');
-
-    const lines = cleanMd.split('\n');
-    const output = [];
-    let i = 0;
-
-    while (i < lines.length) {
-        let line = lines[i];
-        let indentLevel = 0;
-        let lineAlign = null;
-
-        const indentMatch = line.match(/^\x00INDENT:(\d+)\x00/);
-        if (indentMatch) {
-            indentLevel = parseInt(indentMatch[1], 10);
-            line = line.replace(/^\x00INDENT:\d+\x00/, '');
-        }
-
-        const alignMatch = line.match(/^\x00ALIGN:(center|right|left|justify)\x00/);
-        if (alignMatch) {
-            lineAlign = alignMatch[1];
-            line = line.replace(/^\x00ALIGN:(center|right|left|justify)\x00/, '');
-        }
-
-        // ── Bloco de código (fenced) ─────────────────────────
-        if (line.startsWith('```')) {
-            const lang = line.slice(3).trim() || 'text';
-            const codeLines = [];
-            i++;
-            while (i < lines.length && !lines[i].startsWith('```')) {
-                // Sanitiza escapes residuais dentro do código
-                codeLines.push(lines[i].replace(/\\\[/g, '[').replace(/\\\]/g, ']').replace(/\\\s*$/g, ''));
-                i++;
-            }
-            i++; // fecha ```
-            // Map of safe natively supported languages by the listings package
-            const langMap = { 'c++': 'C++', 'cpp': 'C++', 'python': 'Python', 'py': 'Python', 'java': 'Java', 'bash': 'bash', 'sh': 'bash', 'sql': 'SQL', 'html': 'HTML', 'xml': 'XML', 'c': 'C', 'php': 'PHP', 'ruby': 'Ruby' };
-            const latexLang = langMap[lang.toLowerCase()];
-
-            if (latexLang) {
-                output.push(`\\begin{lstlisting}[language=${latexLang}]`);
-            } else {
-                output.push(`\\begin{lstlisting}`);
-            }
-            output.push(...codeLines);
-            output.push(`\\end{lstlisting}`);
-            continue;
-        }
-
-        // ── Tabela GFM ────────────────────────────────────────
-        if (line.includes('|') && i + 1 < lines.length && lines[i + 1].match(/^[\s|:-]+$/)) {
-            const tableLines = [line];
-            i++;
-            while (i < lines.length && lines[i].includes('|')) {
-                tableLines.push(lines[i]);
-                i++;
-            }
-            output.push(tableToLatex(tableLines.join('\n')));
-            continue;
-        }
-
-        // ── Math bloco $$ ... $$ ──────────────────────────────
-        if (line.trim().startsWith('$$')) {
-            const mathLines = [line.trim().slice(2)];
-            if (!line.trim().endsWith('$$') || line.trim() === '$$') {
-                i++;
-                while (i < lines.length && !lines[i].includes('$$')) {
-                    mathLines.push(lines[i]);
-                    i++;
-                }
-                if (i < lines.length) mathLines.push(lines[i].replace('$$', ''));
-            } else {
-                mathLines[0] = mathLines[0].replace(/\$\$$/, '');
-            }
-            i++;
-            output.push(`\\[${mathLines.join('\n')}\\]`);
-            continue;
-        }
-
-        // ── Heading # ─────────────────────────────────────────
-        const hMatch = line.match(/^(#{1,4}) (.+)$/);
-        if (hMatch) {
-            const level = hMatch[1].length;
-            const rawTitle = hMatch[2]
-                .replace(/@@BOLDITALICSTART@@(.*?)@@BOLDITALICEND@@/g, '$1')
-                .replace(/@@BOLDSTART@@(.*?)@@BOLDEND@@/g, '$1')
-                .replace(/@@ITALICSTART@@(.*?)@@ITALICEND@@/g, '$1')
-                .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
-                .replace(/\*\*(.+?)\*\*/g, '$1')
-                .replace(/__(.+?)__/g, '$1')
-                .replace(/\*(.+?)\*/g, '$1')
-                .trim();
-            // Guard: pula headings com título vazio ou somente barras/espaços
-            // (ex: '## \\' gerado por conversão incorreta de DOCX)
-            if (!rawTitle || /^[\\\s]+$/.test(rawTitle)) {
-                i++;
-                continue;
-            }
-            const title = escapeLatexTitle(rawTitle);
-            const cmd = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
-
-            if (lineAlign === 'center') {
-                output.push(`{\\centering\\${cmd}*{${title}}\\par}`);
-            } else if (lineAlign === 'right') {
-                output.push(`{\\raggedleft\\${cmd}*{${title}}\\par}`);
-            } else {
-                output.push(`\\${cmd}*{${title}}`);
-            }
-
-            // Atualiza os cabeçalhos (fancyhdr) para refletir este título e sobrescrever o nome 'Sumário'
-            if (level === 1) {
-                output.push(`\\markboth{${title}}{}`);
-            } else if (level === 2) {
-                output.push(`\\markright{${title}}`);
-            }
-
-            if (config.toc_headers && config.toc_headers[`h${level}`]) {
-                const tocTitle = escapeLatexTitle(rawTitle);
-                output.push(`\\addcontentsline{toc}{${cmd}}{${tocTitle}}`);
-            }
-
-            i++;
-            continue;
-        }
-
-        // ── Blockquote ─────────────────────────────────────────
-        // Suporta tanto '> ' literal quanto '&gt; ' (entidade HTML do editor)
-        if (line.startsWith('> ') || line.startsWith('&gt; ')) {
-            const prefix = line.startsWith('&gt; ') ? '&gt; ' : '> ';
-            const prefixLen = prefix.length;
-            const quoteLines = [];
-            while (i < lines.length && (lines[i].startsWith('> ') || lines[i].startsWith('&gt; '))) {
-                quoteLines.push(lines[i].slice(prefixLen));
-                i++;
-            }
-            output.push(`\\begin{quote}`);
-            output.push(quoteLines.map(inlineToLatex).join(' '));
-            output.push(`\\end{quote}`);
-            continue;
-        }
-
-        // ── Listas ────────────────────────────────────────────
-        if (line.match(/^(\s*)([-*+]|\d+\.) /)) {
-            const listLines = [];
-            while (i < lines.length && (lines[i].match(/^(\s*)([-*+]|\d+\.) /) || (lines[i].trim() === '' && i + 1 < lines.length && lines[i + 1].match(/^\s+([-*+]|\d+\.) /)))) {
-                if (lines[i].trim() !== '') listLines.push(lines[i]);
-                i++;
-            }
-            output.push(listToLatex(listLines));
-            continue;
-        }
-
-        // ── Separador horizontal ─────────────────────────────
-        if (line.match(/^[-*_]{3,}$/)) {
-            output.push('\\medskip\n\\hrule\n\\medskip');
-            i++;
-            continue;
-        }
-
-        // ── Linha vazia ou barra invertida isolada ────────────
-        if (line.trim() === '' || line.trim() === '\\\\') {
-            output.push('');
-            i++;
-            continue;
-        }
-
-        // ── Parágrafo normal / recuado ─────────────────────────
-        const parsedLine = inlineToLatex(line);
-
-        if (parsedLine.trim() === '\\\\') {
-            output.push('');
-        } else {
-            const hspace = indentLevel > 0 ? `\\hspace*{${indentLevel * 1.5}em}` : '';
-            if (lineAlign === 'center') {
-                output.push(`{\\centering ${hspace}${parsedLine} \\par}`);
-            } else if (lineAlign === 'right') {
-                output.push(`{\\raggedleft ${hspace}${parsedLine} \\par}`);
-            } else if (lineAlign === 'justify') {
-                output.push(`{\\justifying ${hspace}${parsedLine} \\par}`);
-            } else {
-                output.push(hspace + parsedLine);
-            }
-        }
-        i++;
-    }
-
-    return output.join('\n');
-}
+import { htmlToLatex, escapeLatex, escapeLatexTitle } from './htmlToLatex.js';
 
 // ============================================================
 // Retorna configuração de pacotes/estilos para cada tema visual
@@ -668,6 +173,9 @@ function generatePreamble(globalSetup, metadata) {
         '\\usepackage{amsmath}',
         '\\usepackage{amssymb}',
         '\\usepackage{newunicodechar}',
+        '',
+        '% ─── Text formatting (justificação) ──────────────────',
+        '\\usepackage{ragged2e}      % \\justifying',
         '\\newunicodechar{ }{~}',
         '\\newunicodechar{á}{\\ifmmode\\text{\\char225\\relax}\\else\\char225\\relax\\fi}',
         '\\newunicodechar{ã}{\\ifmmode\\text{\\char227\\relax}\\else\\char227\\relax\\fi}',
@@ -865,14 +373,14 @@ function blockToLatex(block, mirror = false) {
 
     switch (type) {
         case BLOCK_TYPES.COVER:
-            tex += `\\thispagestyle{empty}\n\\begingroup\n\\LARGE\n${mdToLatex(content, config)}\n\\endgroup\n${breakCmd}\n`;
+            tex += `\\thispagestyle{empty}\n\\begingroup\n\\LARGE\n${htmlToLatex(content, config)}\n\\endgroup\n${breakCmd}\n`;
             break;
 
         // CHAPTER e CONTENT (legado) geram o mesmo LaTeX
         case BLOCK_TYPES.CHAPTER:
         case BLOCK_TYPES.CONTENT: // migração: projetos antigos podem ter blocos 'content'
             if (!toc_visible) tex += `\\begingroup\\makeatletter\\let\\addcontentsline\\@gobblethree\\makeatother\n`;
-            tex += `\\begin{btxbody}\n${mdToLatex(content, config)}\n\\end{btxbody}\n`;
+            tex += `\\begin{btxbody}\n${htmlToLatex(content, config)}\n\\end{btxbody}\n`;
             if (!toc_visible) tex += `\\endgroup\n`;
             break;
 
@@ -880,12 +388,12 @@ function blockToLatex(block, mirror = false) {
             const rawColor = (style_variables.color || '#6366f1').replace('#', '');
             // Garante 6 dígitos hex válidos
             const hexColor = /^[0-9A-Fa-f]{6}$/.test(rawColor) ? rawColor : '6366F1';
-            tex += `{\\color[HTML]{${hexColor}}\n\\begin{quotation}\n${mdToLatex(content, config)}\n\\end{quotation}}\n`;
+            tex += `{\\color[HTML]{${hexColor}}\n\\begin{quotation}\n${htmlToLatex(content, config)}\n\\end{quotation}}\n`;
             break;
         }
 
         case BLOCK_TYPES.CODE:
-            tex += mdToLatex(content, config) + '\n';
+            tex += htmlToLatex(content, config) + '\n';
             break;
 
         case BLOCK_TYPES.TOC: {
@@ -959,7 +467,7 @@ function blockToLatex(block, mirror = false) {
             }
 
             if (!imgRef && !exclusive) {
-                tex += mdToLatex(content, config) + '\n';
+                tex += htmlToLatex(content, config) + '\n';
                 break;
             }
 
@@ -1044,7 +552,7 @@ function blockToLatex(block, mirror = false) {
                     tex += `  \\includegraphics[width=\\linewidth]{${imgRef}}\n`;
                     if (caption) tex += `  \\caption{${escapeLatex(caption)}}\n`;
                     tex += `\\end{wrapfigure}\n`;
-                    if (content && !content.match(/^<!--/)) tex += mdToLatex(content, config) + '\n';
+                    if (content && !content.match(/^<!--/)) tex += htmlToLatex(content, config) + '\n';
                 } else {
                     tex += `\\begin{figure}[${floatPos}]\n  \\centering\n  \\includegraphics[width=${widthFrac}\\textwidth]{${imgRef}}\n${captionTex}\\end{figure}\n`;
                 }
@@ -1178,12 +686,12 @@ function blockToLatex(block, mirror = false) {
 
             tex += `\\end{minipage}\n\n`;
             tex += `\\vspace{1.5em}\n`;
-            tex += mdToLatex(content, config) + '\n';
+            tex += htmlToLatex(content, config) + '\n';
             break;
         }
 
         default:
-            tex += mdToLatex(content, config) + '\n';
+            tex += htmlToLatex(content, config) + '\n';
     }
 
     // Vertical centering end
@@ -1213,56 +721,28 @@ export function generateTex(projectData) {
 }
 
 // ============================================================
-// Generate HTML preview (approximation)
+// Generate HTML preview (usa o conteúdo HTML nativo diretamente)
 // ============================================================
 export function generateHtmlPreview(blocks) {
     let html = '';
 
     for (const block of blocks) {
-        const { type, content, config = {} } = block;
+        const { type, content } = block;
         if (!content) continue;
-
-        let blockHtml = '';
 
         switch (type) {
             case BLOCK_TYPES.TOC:
-                blockHtml = '<div style="padding:16px;background:#f8f8fc;border:1px solid #e0e0f0;border-radius:8px"><strong>Índice (gerado pelo LaTeX)</strong></div>';
+                html += '<div style="padding:16px;background:#f8f8fc;border:1px solid #e0e0f0;border-radius:8px"><strong>Índice (gerado pelo LaTeX)</strong></div>';
                 break;
             case BLOCK_TYPES.SEPARATOR:
-                blockHtml = '<hr style="border:none;border-top:1px solid #ccc;margin:24px 0">';
+                html += '<hr style="border:none;border-top:1px solid #ccc;margin:24px 0">';
                 break;
             default:
-                blockHtml = markdownToHtml(content);
+                html += content;
         }
-
-        html += blockHtml;
     }
 
     return html;
 }
 
-function markdownToHtml(md) {
-    if (!md || md.startsWith('<!--')) {
-        return `<p style="color:#aaa;font-style:italic">(Elemento de mídia)</p>`;
-    }
-
-    let html = md;
-    // Code blocks
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/gm, (_, lang, code) => `<pre><code class="language-${lang}">${code}</code></pre>`);
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-    html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-    html = html.replace(/^---+$/gm, '<hr>');
-    html = html.replace(/\n{2,}/g, '</p><p>');
-    html = `<p>${html}</p>`;
-    return html;
-}
-
-export { mdToLatex, escapeLatex };
+export { htmlToLatex, escapeLatex };
