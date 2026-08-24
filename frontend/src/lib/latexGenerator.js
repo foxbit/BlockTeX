@@ -214,7 +214,7 @@ function inlineToLatex(text) {
     t = t.replace(/\x00ENTITY(\d+)\x00/g, (_, i) => entityPlaceholders[+i]);
     t = t.replace(/\x00CODE(\d+)\x00/g, (_, i) => codePlaceholders[+i]);
     t = t.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathPlaceholders[+i]);
-    t = t.replace(/\x00BREAK\x00/g, ' \\\\\n');
+    t = t.replace(/\x00BREAK\x00/g, ' \\\\');
     t = t.replace(/\x00NBSP\x00/g, '~');
 
     return t;
@@ -269,7 +269,7 @@ function mdToLatex(md, config = {}) {
     cleanMd = cleanMd.replace(/\\\[/g, '[').replace(/\\\]/g, ']');
 
     // 2. Converte quebras de linha HTML <br> em \\
-    cleanMd = cleanMd.replace(/<br\s*\/?>/gi, ' \\\\\n');
+    cleanMd = cleanMd.replace(/<br\s*\/?>/gi, ' \\\\');
 
     // 3. Pre-processa negrito e itálico multilinhas no documento antes de dividir em linhas
     cleanMd = cleanMd.replace(/\*\*\*(.+?)\*\*\*/g, (_, m) => `@@BOLDITALICSTART@@${m}@@BOLDITALICEND@@`);
