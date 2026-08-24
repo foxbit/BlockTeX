@@ -239,13 +239,33 @@ function listToLatex(lines, baseIndent = 0) {
 function mdToLatex(md, config = {}) {
     if (!md) return '';
     // Remove as tags div das marcações virtuais (flags) para que não apareçam no PDF
-    const cleanMd = md.replace(/<div[^>]*data-type="virtual-flag"[\s\S]*?>[\s\S]*?<\/div>/g, '');
+    let cleanMd = md.replace(/<div[^>]*data-type="virtual-flag"[\s\S]*?>[\s\S]*?<\/div>/g, '');
+
+    // Converte quebras de linha HTML <br> em \\
+    cleanMd = cleanMd.replace(/<br\s*\/?>/gi, ' \\\\\n');
+
+    // Normaliza parágrafos com recuo <p data-indent="N">...</p> (multilinha/monolinha)
+    cleanMd = cleanMd.replace(/<p\s+data-indent="(\d+)"[^>]*>([\s\S]*?)<\/p>/gi, (match, levelStr, innerText) => {
+        const level = parseInt(levelStr, 10);
+        return `\n\x00INDENT:${level}\x00${innerText.trim()}\n`;
+    });
+
+    // Remove tags <p> e </p> genéricas remanescentes
+    cleanMd = cleanMd.replace(/<\/?p[^>]*>/gi, '\n');
+
     const lines = cleanMd.split('\n');
     const output = [];
     let i = 0;
 
     while (i < lines.length) {
-        const line = lines[i];
+        let line = lines[i];
+        let indentLevel = 0;
+
+        const indentMatch = line.match(/^\x00INDENT:(\d+)\x00/);
+        if (indentMatch) {
+            indentLevel = parseInt(indentMatch[1], 10);
+            line = line.replace(/^\x00INDENT:\d+\x00/, '');
+        }
 
         // ── Bloco de código (fenced) ─────────────────────────
         if (line.startsWith('```')) {
@@ -382,19 +402,9 @@ function mdToLatex(md, config = {}) {
             continue;
         }
 
-        // ── Parágrafo com recuo (data-indent / HTML <p>) ─────────────
-        const pIndentMatch = line.match(/^<p[^>]*data-indent="(\d+)"[^>]*>(.*?)(?:<\/p>)?$/i);
-        if (pIndentMatch) {
-            const level = parseInt(pIndentMatch[1], 10);
-            const textContent = pIndentMatch[2];
-            const hspace = level > 0 ? `\\hspace*{${level * 1.5}em}` : '';
-            output.push(hspace + inlineToLatex(textContent));
-            i++;
-            continue;
-        }
-
-        // ── Parágrafo normal ─────────────────────────────────
-        output.push(inlineToLatex(line));
+        // ── Parágrafo normal / recuado ─────────────────────────
+        const hspace = indentLevel > 0 ? `\\hspace*{${indentLevel * 1.5}em}` : '';
+        output.push(hspace + inlineToLatex(line));
         i++;
     }
 
@@ -747,7 +757,7 @@ function blockToLatex(block, mirror = false) {
         // CHAPTER e CONTENT (legado) geram o mesmo LaTeX
         case BLOCK_TYPES.CHAPTER:
         case BLOCK_TYPES.CONTENT: // migração: projetos antigos podem ter blocos 'content'
-            if (!toc_visible) tex += `\\begingroup\\let\\addcontentsline\\@gobblethree\n`;
+            if (!toc_visible) tex += `\\begingroup\\makeatletter\\let\\addcontentsline\\@gobblethree\\makeatother\n`;
             tex += `\\begin{btxbody}\n${mdToLatex(content, config)}\n\\end{btxbody}\n`;
             if (!toc_visible) tex += `\\endgroup\n`;
             break;
