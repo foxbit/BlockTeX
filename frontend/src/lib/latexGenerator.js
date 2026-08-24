@@ -410,16 +410,21 @@ function mdToLatex(md, config = {}) {
             continue;
         }
 
-        // ── Linha vazia ───────────────────────────────────────
-        if (line.trim() === '') {
+        // ── Linha vazia ou barra invertida isolada ────────────
+        if (line.trim() === '' || line.trim() === '\\\\') {
             output.push('');
             i++;
             continue;
         }
 
         // ── Parágrafo normal / recuado ─────────────────────────
-        const hspace = indentLevel > 0 ? `\\hspace*{${indentLevel * 1.5}em}` : '';
-        output.push(hspace + inlineToLatex(line));
+        const parsedLine = inlineToLatex(line);
+        if (parsedLine.trim() === '\\\\') {
+            output.push('');
+        } else {
+            const hspace = indentLevel > 0 ? `\\hspace*{${indentLevel * 1.5}em}` : '';
+            output.push(hspace + parsedLine);
+        }
         i++;
     }
 
