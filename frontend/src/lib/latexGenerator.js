@@ -382,6 +382,17 @@ function mdToLatex(md, config = {}) {
             continue;
         }
 
+        // ── Parágrafo com recuo (data-indent / HTML <p>) ─────────────
+        const pIndentMatch = line.match(/^<p[^>]*data-indent="(\d+)"[^>]*>(.*?)(?:<\/p>)?$/i);
+        if (pIndentMatch) {
+            const level = parseInt(pIndentMatch[1], 10);
+            const textContent = pIndentMatch[2];
+            const hspace = level > 0 ? `\\hspace*{${level * 1.5}em}` : '';
+            output.push(hspace + inlineToLatex(textContent));
+            i++;
+            continue;
+        }
+
         // ── Parágrafo normal ─────────────────────────────────
         output.push(inlineToLatex(line));
         i++;

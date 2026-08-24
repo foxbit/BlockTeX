@@ -361,6 +361,31 @@ app.delete('/api/project/:id', authenticate, async (req, res) => {
     }
 });
 
+// Exportar backup do projeto
+app.get('/api/project/:id/backup', authenticate, async (req, res) => {
+    try {
+        const backup = await db.exportProjectBackup(req.params.id);
+        if (!backup) return res.status(404).json({ error: 'Projeto não encontrado' });
+        res.json({ success: true, backup });
+    } catch (err) {
+        console.error('Erro ao exportar backup:', err);
+        res.status(500).json({ error: 'Erro ao gerar backup do projeto' });
+    }
+});
+
+// Importar backup do projeto
+app.post('/api/project/backup/import', authenticate, async (req, res) => {
+    try {
+        const { backup } = req.body;
+        if (!backup) return res.status(400).json({ error: 'Nenhum dado de backup enviado' });
+        const result = await db.importProjectBackup(backup);
+        res.json(result);
+    } catch (err) {
+        console.error('Erro ao importar backup:', err);
+        res.status(500).json({ error: 'Erro ao restaurar backup do projeto' });
+    }
+});
+
 // Listar commits de um projeto (Histórico)
 app.get('/api/project/:id/commits', authenticate, async (req, res) => {
     try {

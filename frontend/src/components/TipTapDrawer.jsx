@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
-import { Node, mergeAttributes } from '@tiptap/core';
+import { Node, Extension, mergeAttributes } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
@@ -162,6 +162,111 @@ const VirtualFlag = Node.create({
     },
 });
 
+const Indent = Extension.create({
+    name: 'indent',
+
+    addOptions() {
+        return {
+            types: ['paragraph', 'heading', 'blockquote'],
+            minLevel: 0,
+            maxLevel: 8,
+        };
+    },
+
+    addGlobalAttributes() {
+        return [
+            {
+                types: this.options.types,
+                attributes: {
+                    indentLevel: {
+                        default: 0,
+                        parseHTML: element => {
+                            const levelAttr = element.getAttribute('data-indent');
+                            if (levelAttr) {
+                                const parsed = parseInt(levelAttr, 10);
+                                return isNaN(parsed) ? 0 : parsed;
+                            }
+                            return 0;
+                        },
+                        renderHTML: attributes => {
+                            if (!attributes.indentLevel || attributes.indentLevel <= 0) {
+                                return {};
+                            }
+                            return {
+                                'data-indent': attributes.indentLevel,
+                            };
+                        },
+                    },
+                },
+            },
+        ];
+    },
+
+    addCommands() {
+        return {
+            indent: () => ({ tr, state, dispatch, editor }) => {
+                if (editor.can().sinkListItem('listItem')) {
+                    return editor.commands.sinkListItem('listItem');
+                }
+                const { selection } = state;
+                const { from, to } = selection;
+                let updated = false;
+
+                state.doc.nodesBetween(from, to, (node, pos) => {
+                    if (this.options.types.includes(node.type.name)) {
+                        const currentLevel = node.attrs.indentLevel || 0;
+                        const nextLevel = Math.min(currentLevel + 1, this.options.maxLevel);
+                        if (nextLevel !== currentLevel) {
+                            if (dispatch) {
+                                tr.setNodeMarkup(pos, undefined, {
+                                    ...node.attrs,
+                                    indentLevel: nextLevel,
+                                });
+                            }
+                            updated = true;
+                        }
+                    }
+                });
+
+                return updated;
+            },
+            outdent: () => ({ tr, state, dispatch, editor }) => {
+                if (editor.can().liftListItem('listItem')) {
+                    return editor.commands.liftListItem('listItem');
+                }
+                const { selection } = state;
+                const { from, to } = selection;
+                let updated = false;
+
+                state.doc.nodesBetween(from, to, (node, pos) => {
+                    if (this.options.types.includes(node.type.name)) {
+                        const currentLevel = node.attrs.indentLevel || 0;
+                        const nextLevel = Math.max(currentLevel - 1, this.options.minLevel);
+                        if (nextLevel !== currentLevel) {
+                            if (dispatch) {
+                                tr.setNodeMarkup(pos, undefined, {
+                                    ...node.attrs,
+                                    indentLevel: nextLevel,
+                                });
+                            }
+                            updated = true;
+                        }
+                    }
+                });
+
+                return updated;
+            },
+        };
+    },
+
+    addKeyboardShortcuts() {
+        return {
+            'Tab': () => this.editor.commands.indent(),
+            'Shift-Tab': () => this.editor.commands.outdent(),
+        };
+    },
+});
+
 function sanitizeMarkdown(md) {
     return md
         .replace(/&gt;/g, '>')
@@ -291,20 +396,56 @@ const MenuBar = ({ editor, onImportClick, onExportClick, onZoomIn, onZoomOut, fo
                 <button
                     onClick={() => editor.chain().focus().setTextAlign('left').run()}
                     className={`toolbar-btn ${editor.isActive({ textAlign: 'left' }) ? 'is-active' : ''}`}
+                    title="Alinhar à Esquerda"
                 >
                     ⫷
                 </button>
                 <button
                     onClick={() => editor.chain().focus().setTextAlign('center').run()}
                     className={`toolbar-btn ${editor.isActive({ textAlign: 'center' }) ? 'is-active' : ''}`}
+                    title="Centralizar"
                 >
                     ≣
                 </button>
                 <button
                     onClick={() => editor.chain().focus().setTextAlign('right').run()}
                     className={`toolbar-btn ${editor.isActive({ textAlign: 'right' }) ? 'is-active' : ''}`}
+                    title="Alinhar à Direita"
                 >
                     ⫸
+                </button>
+            </div>
+
+            <div className="toolbar-sep" />
+
+            <div className="toolbar-group">
+                <button
+                    onClick={() => editor.chain().focus().outdent().run()}
+                    disabled={!editor.can().outdent()}
+                    className="toolbar-btn"
+                    title="Retroceder Espaçamento / Diminuir Recuo (Shift+Tab)"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="21" y1="6" x2="11" y2="6"/>
+                        <line x1="21" y1="12" x2="13" y2="12"/>
+                        <line x1="21" y1="18" x2="11" y2="18"/>
+                        <polyline points="7 8 3 12 7 16"/>
+                        <line x1="3" y1="12" x2="15" y2="12"/>
+                    </svg>
+                </button>
+                <button
+                    onClick={() => editor.chain().focus().indent().run()}
+                    disabled={!editor.can().indent()}
+                    className="toolbar-btn"
+                    title="Avançar Espaçamento / Aumentar Recuo (Tab)"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="21" y1="6" x2="11" y2="6"/>
+                        <line x1="21" y1="12" x2="13" y2="12"/>
+                        <line x1="21" y1="18" x2="11" y2="18"/>
+                        <polyline points="13 8 17 12 13 16"/>
+                        <line x1="5" y1="12" x2="17" y2="12"/>
+                    </svg>
                 </button>
             </div>
 
@@ -513,6 +654,7 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
             }),
+            Indent,
             Markdown.configure({
                 html: true,
                 transformPastedText: true,

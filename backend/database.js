@@ -407,6 +407,147 @@ async function deleteOldCommits(projectId, keepLast = 100) {
     }
 }
 
+async function exportProjectBackup(projectId) {
+    const db = await getDb();
+    const project = await db.get('SELECT * FROM projects WHERE id = ?', projectId);
+    if (!project) return null;
+
+    const committedProject = await db.get('SELECT * FROM committed_projects WHERE id = ?', projectId);
+    const commits = await db.all('SELECT * FROM project_commits WHERE project_id = ?', projectId);
+    
+    const diffs = [];
+    if (commits.length > 0) {
+        const commitIds = commits.map(c => c.id);
+        for (const commitId of commitIds) {
+            const commitDiffs = await db.all('SELECT * FROM commit_diffs WHERE commit_id = ?', commitId);
+            diffs.push(...commitDiffs);
+        }
+    }
+
+    return {
+        version: '1.0',
+        project,
+        committedProject,
+        commits,
+        diffs
+    };
+}
+
+async function importProjectBackup(backupData) {
+    const db = await getDb();
+    
+    if (!backupData || !backupData.project) {
+        throw new Error('Dados de backup inválidos');
+    }
+
+    const { project, committedProject, commits = [], diffs = [] } = backupData;
+    
+    let targetProjectId = project.id;
+    let targetTitle = project.title;
+
+    const existing = await db.get('SELECT id FROM projects WHERE id = ?', targetProjectId);
+    const hasCollision = !!existing;
+
+    if (hasCollision) {
+        targetProjectId = uuidv4();
+        targetTitle = `${project.title} (Restaurado)`;
+    }
+
+    let targetMetadata = project.metadata;
+    if (hasCollision && targetMetadata) {
+        try {
+            const metaObj = JSON.parse(targetMetadata);
+            metaObj.title = targetTitle;
+            targetMetadata = JSON.stringify(metaObj);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    await db.exec('BEGIN TRANSACTION');
+    try {
+        await db.run(
+            `INSERT INTO projects (id, title, updated_at, metadata, global_setup, blocks)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+                targetProjectId,
+                targetTitle,
+                project.updated_at || Date.now(),
+                targetMetadata,
+                project.global_setup,
+                project.blocks
+            ]
+        );
+
+        if (committedProject) {
+            let targetCommittedMetadata = committedProject.metadata;
+            if (hasCollision && targetCommittedMetadata) {
+                try {
+                    const metaObj = JSON.parse(targetCommittedMetadata);
+                    metaObj.title = targetTitle;
+                    targetCommittedMetadata = JSON.stringify(metaObj);
+                } catch (e) {
+                    // ignore
+                }
+            }
+            await db.run(
+                `INSERT INTO committed_projects (id, metadata, global_setup, blocks)
+                 VALUES (?, ?, ?, ?)`,
+                [
+                    targetProjectId,
+                    targetCommittedMetadata,
+                    committedProject.global_setup,
+                    committedProject.blocks
+                ]
+            );
+        }
+
+        const commitIdMap = {};
+        for (const commit of commits) {
+            const oldCommitId = commit.id;
+            let newCommitId = oldCommitId;
+            
+            const commitExists = await db.get('SELECT id FROM project_commits WHERE id = ?', oldCommitId);
+            if (commitExists) {
+                newCommitId = uuidv4();
+            }
+            commitIdMap[oldCommitId] = newCommitId;
+
+            await db.run(
+                `INSERT INTO project_commits (id, project_id, message, timestamp)
+                 VALUES (?, ?, ?, ?)`,
+                [
+                    newCommitId,
+                    targetProjectId,
+                    commit.message,
+                    commit.timestamp
+                ]
+            );
+        }
+
+        for (const diff of diffs) {
+            const newCommitId = commitIdMap[diff.commit_id] || diff.commit_id;
+            await db.run(
+                `INSERT INTO commit_diffs (commit_id, block_id, block_type, change_type, patch)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [
+                    newCommitId,
+                    diff.block_id,
+                    diff.block_type,
+                    diff.change_type,
+                    diff.patch
+                ]
+            );
+        }
+
+        await db.exec('COMMIT');
+        return { success: true, id: targetProjectId, title: targetTitle };
+    } catch (err) {
+        try { await db.exec('ROLLBACK'); } catch (e) {}
+        throw err;
+    }
+}
+
 module.exports = {
     getDb,
     listProjects,
@@ -420,5 +561,7 @@ module.exports = {
     listCommits,
     getCommitDiffs,
     getBlockHistory,
-    deleteOldCommits
+    deleteOldCommits,
+    exportProjectBackup,
+    importProjectBackup
 };

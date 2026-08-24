@@ -242,12 +242,36 @@ export function useBackend() {
         }
     }, [token, logout]);
 
+    // Exportar backup do projeto
+    const exportProjectBackup = useCallback(async (id) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/project/${id}/backup`, {}, 30000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
+    // Importar backup do projeto
+    const importProjectBackup = useCallback(async (backupData) => {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/project/backup/import`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ backup: backupData }),
+            }, 30000, token, logout);
+            return await res.json();
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }, [token, logout]);
+
     const clearLogs = useCallback(() => setLogs([]), []);
 
     return {
         status, logs, compile,
         saveProject, loadProject, listProjects, deleteProject, migrateLegacyProjects,
         clearLogs, checkHealth, getAISettings, saveAISettings, transformText,
-        listCommits, getCommitDiffs, listBlockHistory
+        listCommits, getCommitDiffs, listBlockHistory, exportProjectBackup, importProjectBackup
     };
 }

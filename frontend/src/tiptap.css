@@ -189,6 +189,16 @@
     margin-bottom: 1em;
 }
 
+/* RECUO DE PARÁGRAFO (INDENTATION) */
+.tiptap-editor-area .ProseMirror [data-indent="1"] { padding-left: 24px; }
+.tiptap-editor-area .ProseMirror [data-indent="2"] { padding-left: 48px; }
+.tiptap-editor-area .ProseMirror [data-indent="3"] { padding-left: 72px; }
+.tiptap-editor-area .ProseMirror [data-indent="4"] { padding-left: 96px; }
+.tiptap-editor-area .ProseMirror [data-indent="5"] { padding-left: 120px; }
+.tiptap-editor-area .ProseMirror [data-indent="6"] { padding-left: 144px; }
+.tiptap-editor-area .ProseMirror [data-indent="7"] { padding-left: 168px; }
+.tiptap-editor-area .ProseMirror [data-indent="8"] { padding-left: 192px; }
+
 .tiptap-editor-area .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;

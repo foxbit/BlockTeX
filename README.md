@@ -283,3 +283,10 @@ Implementação completa das especificações do `PRD/PRD BlockTeX v2.md`:
 - ✅ Temas visuais de documento (5 presets com fonte + tipografia coordenadas)
 - ✅ Remoção da capa automática — PDF 100% controlado pelos blocos
 - ✅ Suporte robusto a entidades HTML e emojis no conversor MD→LaTeX
+
+---
+
+## Licença
+
+Este projeto está sob a licença [MIT](LICENSE).
+

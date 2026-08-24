@@ -9,7 +9,7 @@ export function Dashboard() {
     const navigate = useNavigate();
     const { 
         listProjects, migrateLegacyProjects, saveProject, deleteProject, status, checkHealth,
-        getAISettings, saveAISettings
+        getAISettings, saveAISettings, importProjectBackup
     } = useBackend();
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -21,6 +21,35 @@ export function Dashboard() {
         loadProjects();
         checkLegacyStorage();
     }, []);
+
+    const handleImportBackup = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            try {
+                const backupData = JSON.parse(ev.target.result);
+                if (!backupData || !backupData.project) {
+                    alert('Arquivo de backup inválido! O arquivo JSON deve conter a estrutura do projeto.');
+                    return;
+                }
+
+                const res = await importProjectBackup(backupData);
+                if (res.success) {
+                    alert(`Projeto "${res.title}" restaurado com sucesso!`);
+                    loadProjects();
+                } else {
+                    alert(`Erro ao importar backup: ${res.error || 'Erro desconhecido'}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Erro ao ler arquivo de backup. Certifique-se de que é um arquivo JSON válido.');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // Reset file input
+    };
 
     const loadProjects = async () => {
         setLoading(true);
@@ -111,6 +140,10 @@ export function Dashboard() {
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: status.connected ? '#10b981' : '#f43f5e', marginLeft: '4px' }}></div>
                         {status.connected ? `Backend Online (Node ${status.node_version})` : 'Backend Offline'}
                     </div>
+                    <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        📥 Restaurar Backup
+                        <input type="file" accept=".json,.btx" style={{ display: 'none' }} onChange={handleImportBackup} />
+                    </label>
                     <button onClick={handleCreateNew} className="btn btn-compile">
                         + Novo Projeto
                     </button>

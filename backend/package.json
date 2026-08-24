@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@google/genai": "^2.16.0",
     "bcryptjs": "^3.0.3",

@@ -55,7 +55,7 @@ export default function Editor() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef(null);
 
-  const { status, logs, compile, saveProject, loadProject, clearLogs } = useBackend();
+  const { status, logs, compile, saveProject, loadProject, clearLogs, exportProjectBackup } = useBackend();
   const [loading, setLoading] = useState(true);
 
   // Load project by ID or init new
@@ -248,6 +248,31 @@ export default function Editor() {
     showNotification('JSON exportado!');
   }, [store, showNotification]);
 
+  const handleExportBackup = useCallback(async () => {
+    if (id === 'new') {
+      showNotification('Salve o projeto antes de baixar um backup!', 'error');
+      setActionsOpen(false);
+      return;
+    }
+    showNotification('Gerando backup...', 'success');
+    setActionsOpen(false);
+    const result = await exportProjectBackup(id);
+    if (result.success && result.backup) {
+      const json = JSON.stringify(result.backup, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const title = (result.backup.project.title || 'backup').replace(/[^a-z0-9]/gi, '_');
+      a.download = `${title}_backup.btx.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotification('Backup baixado com sucesso!', 'success');
+    } else {
+      showNotification(`Erro ao gerar backup: ${result.error || 'Erro desconhecido'}`, 'error');
+    }
+  }, [id, exportProjectBackup, showNotification]);
+
   // Fecha dropdown ao clicar fora
   useEffect(() => {
     if (!actionsOpen) return;
@@ -357,6 +382,9 @@ export default function Editor() {
                 </label>
                 <button className="dropdown-item" onClick={handleExportJson}>
                   📤 Exportar JSON
+                </button>
+                <button className="dropdown-item" onClick={handleExportBackup}>
+                  📥 Baixar backup
                 </button>
                 <div className="dropdown-divider" />
                 <button className="dropdown-item" onClick={() => { setModal('tex'); setActionsOpen(false); }}>
