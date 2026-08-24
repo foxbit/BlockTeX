@@ -16,14 +16,15 @@ function stripHtml(html) {
 }
 
 function getReadingTime(text) {
-    const words = text.trim().split(/\s+/).length;
+    const words = stripHtml(text).trim().split(/\s+/).filter(Boolean).length;
     const minutes = Math.ceil(words / 200);
     return `${minutes} min`;
 }
 
 function getWordCount(text) {
-    if (!text.trim()) return 0;
-    return text.trim().split(/\s+/).length;
+    const clean = stripHtml(text).trim();
+    if (!clean) return 0;
+    return clean.split(/\s+/).filter(Boolean).length;
 }
 
 // ─── Single Block Card ───────────────────────────────────────

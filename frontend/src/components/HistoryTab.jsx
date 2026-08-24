@@ -66,22 +66,20 @@ export function PatchViewer({ patch, changeType }) {
 
     // Para ADDED/DELETED, mostrar o conteúdo diretamente
     if (changeType === 'ADDED' || changeType === 'DELETED') {
-        try {
-            const parsed = JSON.parse(patch);
-            const content = parsed.content || '';
-            if (!content) return <div className="patch-empty">Bloco sem conteúdo textual</div>;
-            return (
-                <div className="patch-viewer">
-                    <div className={`patch-line ${changeType === 'ADDED' ? 'line-add' : 'line-del'}`}>
-                        {content.split('\n').map((line, i) => (
-                            <div key={i}>{changeType === 'ADDED' ? '+ ' : '- '}{line}</div>
-                        ))}
-                    </div>
+        // O patch é a string "[Metadata]\n{...}\n\n[Content]\n<texto>".
+        // Extrai a parte de conteúdo (legível, já convertida no backend).
+        const contentMatch = patch.match(/\[Content\]\n([\s\S]*)$/);
+        const content = contentMatch ? contentMatch[1].trim() : patch;
+        if (!content) return <div className="patch-empty">Bloco sem conteúdo textual</div>;
+        return (
+            <div className="patch-viewer">
+                <div className={`patch-line ${changeType === 'ADDED' ? 'line-add' : 'line-del'}`}>
+                    {content.split('\n').map((line, i) => (
+                        <div key={i}>{changeType === 'ADDED' ? '+ ' : '- '}{line}</div>
+                    ))}
                 </div>
-            );
-        } catch {
-            return <div className="patch-raw">{patch.substring(0, 500)}</div>;
-        }
+            </div>
+        );
     }
 
     // Para REORDERED, mostrar de/para

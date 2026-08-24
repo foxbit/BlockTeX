@@ -1382,10 +1382,10 @@ function AIPanel({ editor, block, globalSetup, projectId, historyRefreshTrigger 
                     <div style={{ marginTop: '6px' }}>
                         <span style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px', fontSize: '11px' }}>Dicas de Formatação:</span>
                         <ul style={{ paddingLeft: '16px', margin: 0, lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                            <li>Use <strong>**Negrito**</strong> para destacar termos importantes.</li>
-                            <li>Use <em>*Itálico*</em> para estrangeirismos ou ênfase.</li>
+                            <li>Use <strong>Negrito</strong> para destacar termos importantes.</li>
+                            <li>Use <em>Itálico</em> para estrangeirismos ou ênfase.</li>
                             <li>Títulos (H1, H2, H3) serão refletidos no Índice Automático do livro se ativados no Inspector.</li>
-                            <li>O conversor do BlockTeX limpa automaticamente entidades HTML como emojis, garantindo compilação LaTeX sem erros.</li>
+                            <li>O conversor do BlockTeX limpa automaticamente emojis, garantindo compilação LaTeX sem erros.</li>
                         </ul>
                     </div>
                 </div>

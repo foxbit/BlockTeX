@@ -163,6 +163,33 @@ async function getUserByEmail(email) {
 // ── Changelog: Campos base64 pesados a excluir do diff ──
 const HEAVY_FIELDS = ['imageBase64', 'image1Base64', 'image2Base64', 'image3Base64', 'image4Base64'];
 
+// Converte o conteúdo do bloco (agora HTML nativo do TipTap) em texto legível
+// para o diff do histórico. Sem depender de DOM (backend roda em Node puro):
+// quebra linhas em elementos de bloco e remove tags inline.
+function htmlToDiffText(html) {
+    if (!html) return '';
+    return String(html)
+        // Elementos de bloco → quebra de linha
+        .replace(/<\/(p|h[1-6]|li|blockquote|pre|div|tr|table)>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(ul|ol)>/gi, '\n')
+        // Remove tags remanescentes (inline)
+        .replace(/<[^>]+>/g, '')
+        // Decodifica entidades comuns
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;|&apos;/gi, "'")
+        // Normaliza espaços e linhas vazias
+        .replace(/[ \t]+/g, ' ')
+        .split('\n')
+        .map(l => l.trimEnd())
+        .join('\n')
+        .trim();
+}
+
 function extractComparableContent(block) {
     const clone = JSON.parse(JSON.stringify(block));
     if (clone.style_variables) {
@@ -174,8 +201,8 @@ function extractComparableContent(block) {
     }
     delete clone.collapsed;
     
-    // Extrai o conteúdo textual (Markdown) para permitir diff linha por linha eficiente
-    const content = clone.content || '';
+    // Extrai o conteúdo textual (HTML → texto legível) para diff linha por linha
+    const content = htmlToDiffText(clone.content || '');
     delete clone.content;
     
     return `[Metadata]\n${JSON.stringify(clone, null, 2)}\n\n[Content]\n${content}`;
