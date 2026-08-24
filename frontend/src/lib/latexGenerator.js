@@ -112,7 +112,7 @@ function tableToLatex(tableText) {
 function inlineToLatex(text) {
     let t = stripEmojis(text);
 
-    // Protege math inline $...$ antes de escapar
+    // 1. Protege math inline $...$ antes de escapar
     const mathPlaceholders = [];
     t = t.replace(/\$\$([\s\S]+?)\$\$/g, (_, m) => {
         mathPlaceholders.push(`\\[${m}\\]`);
@@ -123,27 +123,36 @@ function inlineToLatex(text) {
         return `\x00MATH${mathPlaceholders.length - 1}\x00`;
     });
 
-    // Protege código inline `...`
+    // 2. Protege código inline `...`
     const codePlaceholders = [];
     t = t.replace(/`([^`]+)`/g, (_, c) => {
         codePlaceholders.push(`\\texttt{${c.replace(/[{}]/g, '\\$&')}}`);
         return `\x00CODE${codePlaceholders.length - 1}\x00`;
     });
 
-    // Protege URLs em links [texto](url) para evitar escapar underlines nela
+    // 3. Protege URLs em links [texto](url)
     const urlPlaceholders = [];
     t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
         urlPlaceholders.push(url);
         return `[${label}](\x00URL${urlPlaceholders.length - 1}\x00)`;
     });
 
-    // Underline: o TipTap serializa <u> como HTML inline (Markdown não tem underline).
-    // Converte para \underline{} do LaTeX antes de qualquer escape.
-    t = t.replace(/<u>(.+?)<\/u>/g, (_, x) => `\\underline{${x}}`);
+    // 4. Protege quebras de linha manuais (<br> ou \\)
+    t = t.replace(/<br\s*\/?>/gi, '\x00BREAK\x00');
+    t = t.replace(/\\\\/g, '\x00BREAK\x00');
 
-    // [LEGACY] Protege entidades HTML remanescentes de projetos antigos.
-    // Novos conteúdos já são sanitizados na saída do TipTap (sanitizeMarkdown),
-    // mas projetos .btx salvos anteriormente podem conter &gt; etc.
+    // 5. Protege underline <u> em placeholder para não ter chaves escapadas precocemente
+    const underlinePlaceholders = [];
+    t = t.replace(/<u>([\s\S]+?)<\/u>/gi, (_, x) => {
+        underlinePlaceholders.push(x);
+        return `\x00UNDERLINE${underlinePlaceholders.length - 1}\x00`;
+    });
+
+    // 6. Converte tags de formatação HTML em Markdown puro antes do escape
+    t = t.replace(/<(strong|b)>([\s\S]+?)<\/\1>/gi, (_, __, x) => `**${x}**`);
+    t = t.replace(/<(em|i)>([\s\S]+?)<\/\1>/gi, (_, __, x) => `*${x}*`);
+
+    // 7. [LEGACY] Protege entidades HTML remanescentes de projetos antigos
     const entityPlaceholders = [];
     t = t.replace(/&(amp|lt|gt|quot|apos);/g, (match) => {
         const map = {
@@ -157,9 +166,7 @@ function inlineToLatex(text) {
         return `\x00ENTITY${entityPlaceholders.length - 1}\x00`;
     });
 
-    // Escapa caracteres LaTeX no texto normal.
-    // ATENÇÃO: '\' deve ser escapado PRIMEIRO, pois os escapes
-    // seguintes introduzem '\' e não devem ser re-processados.
+    // 8. Escapa caracteres especiais do LaTeX no texto normal
     t = t
         .replace(/\\/g, '\\textbackslash{}')
         .replace(/&/g, '\\&')
@@ -170,8 +177,9 @@ function inlineToLatex(text) {
         .replace(/\{/g, '\\{')
         .replace(/\}/g, '\\}');
 
+    // 9. Converte marcações Markdown (Negrito e Itálico) para comandos LaTeX APÓS o escape
     // Bold + Italic combinado (***texto***)
-    t = t.replace(/\*\*\*(.+?)\*\*\*/g, (_, x) => `\\textbf{\\textit{${x}}}`);
+    t = t.replace(/\*\*\*(.+?)\*\*\*/gs, (_, x) => `\\textbf{\\textit{${x}}}`);
     // Bold (**texto** ou __texto__)
     t = t.replace(/\*\*(.+?)\*\*/gs, (_, x) => `\\textbf{${x}}`);
     t = t.replace(/__(.+?)__/gs, (_, x) => `\\textbf{${x}}`);
@@ -179,19 +187,19 @@ function inlineToLatex(text) {
     t = t.replace(/\*(.+?)\*/gs, (_, x) => `\\textit{${x}}`);
     t = t.replace(/(?<![a-zA-Z0-9])_([^_\n]+?)_(?![a-zA-Z0-9])/g, (_, x) => `\\textit{${x}}`);
 
-    // Escapa underlines restantes (que não foram consumidos como itálico/negrito)
+    // Escapa underlines restantes
     t = t.replace(/_/g, '\\_');
 
-    // Converte links de volta e gera o comando \href
+    // 10. Restaura placeholders
     t = t.replace(/\[([^\]]+)\]\(\x00URL(\d+)\x00\)/g, (_, label, urlId) => {
         const url = urlPlaceholders[+urlId];
         return `\\href{${url}}{${label}}`;
     });
-
-    // Restaura placeholders
+    t = t.replace(/\x00UNDERLINE(\d+)\x00/g, (_, i) => `\\underline{${underlinePlaceholders[+i]}}`);
     t = t.replace(/\x00ENTITY(\d+)\x00/g, (_, i) => entityPlaceholders[+i]);
     t = t.replace(/\x00CODE(\d+)\x00/g, (_, i) => codePlaceholders[+i]);
     t = t.replace(/\x00MATH(\d+)\x00/g, (_, i) => mathPlaceholders[+i]);
+    t = t.replace(/\x00BREAK\x00/g, ' \\\\\n');
 
     return t;
 }
