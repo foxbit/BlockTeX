@@ -280,10 +280,31 @@ function mdToLatex(md, config = {}) {
     cleanMd = cleanMd.replace(/__(.+?)__/g, (_, m) => `@@BOLDSTART@@${m}@@BOLDEND@@`);
     cleanMd = cleanMd.replace(/(?<!\*)\*([^\*\n]+?)\*(?!\*)/g, (_, m) => `@@ITALICSTART@@${m}@@ITALICEND@@`);
 
-    // 4. Normaliza parágrafos com recuo <p data-indent="N">...</p> (multilinha/monolinha)
-    cleanMd = cleanMd.replace(/<p\s+data-indent="(\d+)"[^>]*>([\s\S]*?)<\/p>/gi, (match, levelStr, innerText) => {
+    // 4. Normaliza títulos/headings com alinhamento: <hN align="center">...</hN> ou <hN style="text-align: center">...</hN>
+    cleanMd = cleanMd.replace(/<h([1-4])\s+[^>]*align="(center|right|left|justify)"[^>]*>([\s\S]*?)<\/h\1>/gi, (match, levelStr, align, titleText) => {
         const level = parseInt(levelStr, 10);
-        return `\n\x00INDENT:${level}\x00${innerText.trim()}\n`;
+        const hashes = '#'.repeat(level);
+        return `\n\x00ALIGN:${align.toLowerCase()}\x00${hashes} ${titleText.trim()}\n`;
+    });
+
+    cleanMd = cleanMd.replace(/<h([1-4])\s+[^>]*style="[^"]*text-align:\s*(center|right|left|justify)[^"]*"[^>]*>([\s\S]*?)<\/h\1>/gi, (match, levelStr, align, titleText) => {
+        const level = parseInt(levelStr, 10);
+        const hashes = '#'.repeat(level);
+        return `\n\x00ALIGN:${align.toLowerCase()}\x00${hashes} ${titleText.trim()}\n`;
+    });
+
+    // 5. Normaliza parágrafos com recuo e/ou alinhamento: <p data-indent="N" align="center">...</p> ou <p align="center">...</p>
+    cleanMd = cleanMd.replace(/<p\s+[^>]*>([\s\S]*?)<\/p>/gi, (match, innerText) => {
+        const indentMatch = match.match(/data-indent="(\d+)"/i);
+        const alignMatch = match.match(/align="(center|right|left|justify)"/i) || match.match(/style="[^"]*text-align:\s*(center|right|left|justify)/i);
+        const indent = indentMatch ? parseInt(indentMatch[1], 10) : 0;
+        const align = alignMatch ? alignMatch[1].toLowerCase() : '';
+
+        let prefix = '';
+        if (indent > 0) prefix += `\x00INDENT:${indent}\x00`;
+        if (align) prefix += `\x00ALIGN:${align}\x00`;
+
+        return `\n${prefix}${innerText.trim()}\n`;
     });
 
     // Remove tags <p> e </p> genéricas remanescentes
@@ -296,11 +317,18 @@ function mdToLatex(md, config = {}) {
     while (i < lines.length) {
         let line = lines[i];
         let indentLevel = 0;
+        let lineAlign = null;
 
         const indentMatch = line.match(/^\x00INDENT:(\d+)\x00/);
         if (indentMatch) {
             indentLevel = parseInt(indentMatch[1], 10);
             line = line.replace(/^\x00INDENT:\d+\x00/, '');
+        }
+
+        const alignMatch = line.match(/^\x00ALIGN:(center|right|left|justify)\x00/);
+        if (alignMatch) {
+            lineAlign = alignMatch[1];
+            line = line.replace(/^\x00ALIGN:(center|right|left|justify)\x00/, '');
         }
 
         // ── Bloco de código (fenced) ─────────────────────────
@@ -371,7 +399,14 @@ function mdToLatex(md, config = {}) {
             }
             const title = escapeLatexTitle(rawTitle);
             const cmd = ['chapter', 'section', 'subsection', 'subsubsection'][level - 1];
-            output.push(`\\${cmd}*{${title}}`);
+
+            if (lineAlign === 'center') {
+                output.push(`{\\centering\\${cmd}*{${title}}\\par}`);
+            } else if (lineAlign === 'right') {
+                output.push(`{\\raggedleft\\${cmd}*{${title}}\\par}`);
+            } else {
+                output.push(`\\${cmd}*{${title}}`);
+            }
 
             // Atualiza os cabeçalhos (fancyhdr) para refletir este título e sobrescrever o nome 'Sumário'
             if (level === 1) {
@@ -437,7 +472,15 @@ function mdToLatex(md, config = {}) {
             output.push('');
         } else {
             const hspace = indentLevel > 0 ? `\\hspace*{${indentLevel * 1.5}em}` : '';
-            output.push(hspace + parsedLine);
+            if (lineAlign === 'center') {
+                output.push(`{\\centering ${hspace}${parsedLine} \\par}`);
+            } else if (lineAlign === 'right') {
+                output.push(`{\\raggedleft ${hspace}${parsedLine} \\par}`);
+            } else if (lineAlign === 'justify') {
+                output.push(`{\\justifying ${hspace}${parsedLine} \\par}`);
+            } else {
+                output.push(hspace + parsedLine);
+            }
         }
         i++;
     }

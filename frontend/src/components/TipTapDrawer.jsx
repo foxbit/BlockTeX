@@ -3,6 +3,8 @@ import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from
 import { Node, Extension, mergeAttributes } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
+import Heading from '@tiptap/extension-heading';
+import Paragraph from '@tiptap/extension-paragraph';
 import { Markdown } from 'tiptap-markdown';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -265,6 +267,72 @@ const Indent = Extension.create({
             'Shift-Tab': () => this.editor.commands.outdent(),
         };
     },
+});
+
+const CustomHeading = Heading.extend({
+    addStorage() {
+        return {
+            ...this.parent?.(),
+            markdown: {
+                serialize(state, node) {
+                    const align = node.attrs.textAlign;
+                    if (align && align !== 'left') {
+                        const level = node.attrs.level || 1;
+                        state.write(`<h${level} align="${align}">`);
+                        state.renderInline(node);
+                        state.write(`</h${level}>`);
+                        state.closeBlock(node);
+                    } else {
+                        state.write(state.repeat('#', node.attrs.level) + ' ');
+                        state.renderInline(node);
+                        state.closeBlock(node);
+                    }
+                },
+                parse: {
+                    // handled by HTML parser
+                }
+            }
+        };
+    }
+});
+
+const CustomParagraph = Paragraph.extend({
+    addStorage() {
+        return {
+            ...this.parent?.(),
+            markdown: {
+                serialize(state, node) {
+                    const align = node.attrs.textAlign;
+                    const indent = node.attrs.indentLevel || 0;
+                    let openTag = '';
+                    let closeTag = '';
+                    if (align && align !== 'left' && indent > 0) {
+                        openTag = `<p data-indent="${indent}" align="${align}">`;
+                        closeTag = `</p>`;
+                    } else if (align && align !== 'left') {
+                        openTag = `<p align="${align}">`;
+                        closeTag = `</p>`;
+                    } else if (indent > 0) {
+                        openTag = `<p data-indent="${indent}">`;
+                        closeTag = `</p>`;
+                    }
+
+                    if (openTag) {
+                        state.write(openTag);
+                        state.renderInline(node);
+                        state.write(closeTag);
+                        state.closeBlock(node);
+                    } else {
+                        state.renderInline(node);
+                        state.closeBlock(node);
+                    }
+                },
+                parse: {
+                    // handled by HTML parser
+                }
+            }
+        };
+    }
 });
 
 function sanitizeMarkdown(md) {
@@ -648,8 +716,11 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
-                heading: { levels: [1, 2, 3, 4] },
+                heading: false,
+                paragraph: false,
             }),
+            CustomHeading.configure({ levels: [1, 2, 3, 4] }),
+            CustomParagraph,
             Underline,
             TextAlign.configure({
                 types: ['heading', 'paragraph'],
