@@ -130,6 +130,12 @@
     min-height: 100%;
 }
 
+.tiptap-code-editor {
+    display: block;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
 .tiptap-editor-area .ProseMirror {
     outline: none;
     color: var(--text-primary);

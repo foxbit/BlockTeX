@@ -484,6 +484,10 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
     const searchTermRef = useRef(searchTerm);
     const currentMatchIndexRef = useRef(currentMatchIndex);
 
+    // Modo de visualização do editor: 'visual' (WYSIWYG) | 'code' (HTML bruto)
+    const [viewMode, setViewMode] = useState('visual');
+    const [codeValue, setCodeValue] = useState('');
+
 
 
     const handleZoomIn = () => setFontSize(prev => Math.min(prev + 1, 30));
@@ -518,6 +522,9 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
             setContent(block.content || '');
             setHasUnsavedChanges(false);
             setLastSaveInfo({ time: null, type: null });
+            // Volta ao modo visual e limpa o buffer de código ao trocar de bloco
+            setViewMode('visual');
+            setCodeValue('');
 
             // Restaura posição de rolagem salva
             const savedScroll = localStorage.getItem(`blocktex_scroll_${block.id}`);
@@ -679,7 +686,13 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
     if (!block) return null;
 
     const handleSave = async (type = 'manual') => {
-        await onSave(block.id, content, type === 'manual');
+        // Se estiver no modo código, aplica o código editado ao editor antes de salvar
+        let contentToSave = content;
+        if (viewMode === 'code') {
+            editor.commands.setContent(codeValue);
+            contentToSave = codeValue;
+        }
+        await onSave(block.id, contentToSave, type === 'manual');
         setHasUnsavedChanges(false);
         const now = new Date();
         const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -687,6 +700,27 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
         if (type === 'manual') {
             setHistoryRefreshTrigger(prev => prev + 1);
         }
+    };
+
+    // Alterna para o modo código: popula o textarea com o HTML atual do editor
+    const handleSwitchToCode = () => {
+        if (!editor) return;
+        setCodeValue(editor.getHTML());
+        setViewMode('code');
+    };
+
+    // Alterna para o modo visual: aplica o HTML editado ao editor
+    const handleSwitchToVisual = () => {
+        if (!editor) return;
+        editor.commands.setContent(codeValue);
+        setContent(codeValue);
+        setHasUnsavedChanges(true);
+        setViewMode('visual');
+    };
+
+    const handleCodeChange = (e) => {
+        setCodeValue(e.target.value);
+        setHasUnsavedChanges(true);
     };
 
     const handleImportMarkdown = (e) => {
@@ -759,6 +793,30 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
                         </div>
                     </div>
                     <div className="drawer-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="toolbar-group" style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            overflow: 'hidden'
+                        }}>
+                            <button
+                                onClick={handleSwitchToVisual}
+                                className={`toolbar-btn ${viewMode === 'visual' ? 'is-active' : ''}`}
+                                style={{ fontSize: '11px', padding: '4px 10px', border: 'none', borderRadius: 0 }}
+                                title="Modo visual (WYSIWYG)"
+                            >
+                                👁 Visual
+                            </button>
+                            <button
+                                onClick={handleSwitchToCode}
+                                className={`toolbar-btn ${viewMode === 'code' ? 'is-active' : ''}`}
+                                style={{ fontSize: '11px', padding: '4px 10px', border: 'none', borderRadius: 0 }}
+                                title="Modo código (HTML bruto editável)"
+                            >
+                                &lt;/&gt; Código
+                            </button>
+                        </div>
                         <button className="btn btn-primary" onClick={() => handleSave('manual')}>Salvar</button>
                         <button 
                             className="btn btn-ghost" 
@@ -845,88 +903,115 @@ export function TipTapDrawer({ block, open, onClose, onSave, globalSetup, projec
 
                 <div className="drawer-body" style={{ display: 'flex', flexDirection: 'row', flex: 1, overflow: 'hidden', '--editor-zoom-level': `${fontSize}px` }}>
                     <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                        {editor && (
-                            <BubbleMenu
-                                pluginKey={textBubbleMenuKey}
-                                className="bubble-menu"
-                                editor={editor}
-                                tippyOptions={{ duration: 100 }}
-                                shouldShow={({ editor }) => {
-                                    // Mostra menu de texto se houver seleção de caracteres E não estiver dentro de uma tabela
-                                    return !editor.state.selection.empty && !editor.isActive('table');
+                        {viewMode === 'code' ? (
+                            <textarea
+                                className="tiptap-code-editor"
+                                value={codeValue}
+                                onChange={handleCodeChange}
+                                spellCheck={false}
+                                style={{
+                                    width: '100%',
+                                    minHeight: '100%',
+                                    background: 'var(--bg-secondary, #1e1e1e)',
+                                    color: 'var(--text-primary, #d4d4d4)',
+                                    fontFamily: 'var(--font-mono, "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace)',
+                                    fontSize: '13px',
+                                    lineHeight: '1.6',
+                                    padding: '16px',
+                                    border: '1px solid var(--border-default)',
+                                    borderRadius: 'var(--radius-md)',
+                                    resize: 'none',
+                                    outline: 'none',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word'
                                 }}
-                            >
-                                <button
-                                    onClick={() => editor.chain().focus().toggleBold().run()}
-                                    className={editor.isActive('bold') ? 'is-active' : ''}
-                                    type="button"
-                                    title="Negrito"
-                                >
-                                    <b>B</b>
-                                </button>
-                                <button
-                                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                                    className={editor.isActive('italic') ? 'is-active' : ''}
-                                    type="button"
-                                    title="Itálico"
-                                >
-                                    <i>I</i>
-                                </button>
-                                <button
-                                    onClick={() => editor.chain().focus().toggleUnderline().run()}
-                                    className={editor.isActive('underline') ? 'is-active' : ''}
-                                    type="button"
-                                    title="Sublinhado"
-                                >
-                                    <u>U</u>
-                                </button>
-                                <button
-                                    onClick={() => editor.chain().focus().toggleStrike().run()}
-                                    className={editor.isActive('strike') ? 'is-active' : ''}
-                                    type="button"
-                                    title="Tachado"
-                                >
-                                    <s>S</s>
-                                </button>
-                            </BubbleMenu>
+                            />
+                        ) : (
+                            <>
+                                {editor && (
+                                    <BubbleMenu
+                                        pluginKey={textBubbleMenuKey}
+                                        className="bubble-menu"
+                                        editor={editor}
+                                        tippyOptions={{ duration: 100 }}
+                                        shouldShow={({ editor }) => {
+                                            // Mostra menu de texto se houver seleção de caracteres E não estiver dentro de uma tabela
+                                            return !editor.state.selection.empty && !editor.isActive('table');
+                                        }}
+                                    >
+                                        <button
+                                            onClick={() => editor.chain().focus().toggleBold().run()}
+                                            className={editor.isActive('bold') ? 'is-active' : ''}
+                                            type="button"
+                                            title="Negrito"
+                                        >
+                                            <b>B</b>
+                                        </button>
+                                        <button
+                                            onClick={() => editor.chain().focus().toggleItalic().run()}
+                                            className={editor.isActive('italic') ? 'is-active' : ''}
+                                            type="button"
+                                            title="Itálico"
+                                        >
+                                            <i>I</i>
+                                        </button>
+                                        <button
+                                            onClick={() => editor.chain().focus().toggleUnderline().run()}
+                                            className={editor.isActive('underline') ? 'is-active' : ''}
+                                            type="button"
+                                            title="Sublinhado"
+                                        >
+                                            <u>U</u>
+                                        </button>
+                                        <button
+                                            onClick={() => editor.chain().focus().toggleStrike().run()}
+                                            className={editor.isActive('strike') ? 'is-active' : ''}
+                                            type="button"
+                                            title="Tachado"
+                                        >
+                                            <s>S</s>
+                                        </button>
+                                    </BubbleMenu>
+                                )}
+                                {editor && (
+                                    <BubbleMenu
+                                        pluginKey={tableBubbleMenuKey}
+                                        className="bubble-menu table-bubble-menu"
+                                        editor={editor}
+                                        tippyOptions={{ duration: 100 }}
+                                        shouldShow={({ editor }) => {
+                                            // Mostra menu de tabelas apenas se o cursor estiver ativo dentro de uma célula
+                                            return editor.isActive('table');
+                                        }}
+                                    >
+                                        <button onClick={() => editor.chain().focus().addColumnBefore().run()} type="button" title="Inserir Coluna à Esquerda">
+                                            ➕🔲
+                                        </button>
+                                        <button onClick={() => editor.chain().focus().addColumnAfter().run()} type="button" title="Inserir Coluna à Direita">
+                                            🔲➕
+                                        </button>
+                                        <button onClick={() => editor.chain().focus().deleteColumn().run()} type="button" title="Excluir Coluna" style={{ color: 'var(--accent-rose)' }}>
+                                            🗑️🔲
+                                        </button>
+                                        <div style={{ width: '1px', background: 'var(--border-default)', margin: '4px 2px' }} />
+                                        <button onClick={() => editor.chain().focus().addRowBefore().run()} type="button" title="Inserir Linha Acima">
+                                            ➕➖
+                                        </button>
+                                        <button onClick={() => editor.chain().focus().addRowAfter().run()} type="button" title="Inserir Linha Abaixo">
+                                            ➖➕
+                                        </button>
+                                        <button onClick={() => editor.chain().focus().deleteRow().run()} type="button" title="Excluir Linha" style={{ color: 'var(--accent-rose)' }}>
+                                            🗑️➖
+                                        </button>
+                                        <div style={{ width: '1px', background: 'var(--border-default)', margin: '4px 2px' }} />
+                                        <button onClick={() => editor.chain().focus().deleteTable().run()} type="button" title="Excluir Tabela Inteira" style={{ color: 'var(--accent-rose)', fontWeight: 'bold' }}>
+                                            🗑️ Tabela
+                                        </button>
+                                    </BubbleMenu>
+                                )}
+                                <EditorContent editor={editor} className="tiptap-editor-area" />
+                            </>
                         )}
-                        {editor && (
-                            <BubbleMenu
-                                pluginKey={tableBubbleMenuKey}
-                                className="bubble-menu table-bubble-menu"
-                                editor={editor}
-                                tippyOptions={{ duration: 100 }}
-                                shouldShow={({ editor }) => {
-                                    // Mostra menu de tabelas apenas se o cursor estiver ativo dentro de uma célula
-                                    return editor.isActive('table');
-                                }}
-                            >
-                                <button onClick={() => editor.chain().focus().addColumnBefore().run()} type="button" title="Inserir Coluna à Esquerda">
-                                    ➕🔲
-                                </button>
-                                <button onClick={() => editor.chain().focus().addColumnAfter().run()} type="button" title="Inserir Coluna à Direita">
-                                    🔲➕
-                                </button>
-                                <button onClick={() => editor.chain().focus().deleteColumn().run()} type="button" title="Excluir Coluna" style={{ color: 'var(--accent-rose)' }}>
-                                    🗑️🔲
-                                </button>
-                                <div style={{ width: '1px', background: 'var(--border-default)', margin: '4px 2px' }} />
-                                <button onClick={() => editor.chain().focus().addRowBefore().run()} type="button" title="Inserir Linha Acima">
-                                    ➕➖
-                                </button>
-                                <button onClick={() => editor.chain().focus().addRowAfter().run()} type="button" title="Inserir Linha Abaixo">
-                                    ➖➕
-                                </button>
-                                <button onClick={() => editor.chain().focus().deleteRow().run()} type="button" title="Excluir Linha" style={{ color: 'var(--accent-rose)' }}>
-                                    🗑️➖
-                                </button>
-                                <div style={{ width: '1px', background: 'var(--border-default)', margin: '4px 2px' }} />
-                                <button onClick={() => editor.chain().focus().deleteTable().run()} type="button" title="Excluir Tabela Inteira" style={{ color: 'var(--accent-rose)', fontWeight: 'bold' }}>
-                                    🗑️ Tabela
-                                </button>
-                            </BubbleMenu>
-                        )}
-                        <EditorContent editor={editor} className="tiptap-editor-area" />
                     </div>
                     <AIPanel editor={editor} block={block} globalSetup={globalSetup} projectId={projectId} historyRefreshTrigger={historyRefreshTrigger} />
                 </div>
