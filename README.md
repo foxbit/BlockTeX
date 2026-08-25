@@ -143,11 +143,10 @@ npm run dev
 
 ### Compilação LaTeX
 - Geração do `.tex` completo com preâmbulo parametrizado
+- **Botão Compilar com seletor PDF/EPUB**: O botão `⚡ Compilar` abre um dropdown para escolher o formato de saída.
+- **Compilação PDF**: fluxo `Node.js → pdflatex/lualatex` com logs em tempo real via WebSocket, mapeamento de erros com número de linha e download do PDF.
+- **Compilação EPUB (e-book)**: gera um **EPUB 3** diretamente dos blocos visuais (sem passar por LaTeX), com capítulos estruturados a partir dos blocos de Capítulo, índice de navegação (TOC), tipografia própria para e-readers e suporte a imagens dos blocos (`.epub` baixado automaticamente ao compilar).
 - Inclusão inteligente do pacote `eso-pic` para sangrias em tela inteira e `tikz` para recortes de precisão
-- Envio para backend `Node.js → pdflatex/lualatex`
-- Logs de compilação em **tempo real via WebSocket**
-- Mapeamento de erros com número de linha
-- Download do PDF gerado
 - **PDF começa diretamente no primeiro bloco** — capa automática removida (use o bloco Capa quando quiser)
 - Linha separadora do cabeçalho removida por padrão
 - Tratamento robusto de emojis e entidades HTML (`&gt;`, `&lt;`, `&amp;`) no conversor Markdown→LaTeX
