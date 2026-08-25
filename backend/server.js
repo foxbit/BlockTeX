@@ -25,6 +25,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const url = require('url');
 const { authenticate, SECRET_KEY } = require('./auth');
+const { generateEpub } = require('./epubGenerator');
 
 const app = express();
 const server = http.createServer(app);
@@ -135,6 +136,7 @@ app.get('/api/health', (req, res) => {
                 res.json({
                     status: 'ok',
                     latex_available: engines.pdflatex || engines.lualatex,
+                    epub_available: true,
                     engines,
                     node_version: process.version,
                 });
@@ -276,6 +278,42 @@ app.post('/api/compile', authenticate, async (req, res) => {
     }
 });
 
+// Compile EPUB endpoint
+app.post('/api/compile-epub', authenticate, async (req, res) => {
+    const {
+        title = 'Documento',
+        author = 'Autor',
+        language = 'pt',
+        chapters = [],
+        imageFiles = {},
+    } = req.body;
+
+    if (!Array.isArray(chapters) || chapters.length === 0) {
+        return res.status(400).json({ error: 'É necessário enviar ao menos um capítulo (chapters).' });
+    }
+
+    try {
+        broadcast({ type: 'compile_start', job_id: 'epub' });
+        broadcast({ type: 'log', job_id: 'epub', message: `> Gerando EPUB: "${title}" (${chapters.length} capítulos)...\n` });
+
+        const epubBuffer = await generateEpub({ title, author, language, chapters, imageFiles });
+        const epubBase64 = epubBuffer.toString('base64');
+
+        broadcast({ type: 'compile_success', job_id: 'epub' });
+        broadcast({ type: 'log', job_id: 'epub', message: `\n✅ EPUB gerado com sucesso (${(epubBuffer.length / 1024).toFixed(1)} KB)!\n` });
+
+        res.json({ success: true, job_id: 'epub', epub_base64: epubBase64 });
+    } catch (err) {
+        console.error('Erro ao gerar EPUB:', err);
+        broadcast({ type: 'compile_error', job_id: 'epub', errors: [{ message: err.message }] });
+        res.json({
+            success: false,
+            job_id: 'epub',
+            errors: [{ message: `Falha ao gerar EPUB: ${err.message}` }],
+            log: err.stack || err.message,
+        });
+    }
+});
 
 // Parse LaTeX error log
 function parseLatexErrors(log) {

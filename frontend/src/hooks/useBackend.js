@@ -118,6 +118,26 @@ export function useBackend() {
         }
     }, [token, logout]);
 
+    // Compile EPUB (gera e-books EPUB 3 via backend)
+    const compileEpub = useCallback(async (epubData) => {
+        setLogs(prev => [...prev, { type: 'info', content: `> Gerando EPUB: ${epubData.chapters?.length || 0} capítulos...`, ts: Date.now() }]);
+        try {
+            const res = await fetchWithTimeout(`${API_BASE}/compile-epub`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(epubData),
+            }, 120000, token, logout); // 2 min timeout
+            const data = await res.json();
+            return data;
+        } catch (e) {
+            const msg = e.message.includes('Failed to fetch')
+                ? 'Backend offline. Inicie o servidor: cd backend && node server.js'
+                : `Erro: ${e.message}`;
+            setLogs(prev => [...prev, { type: 'error', content: `❌ ${msg}`, ts: Date.now() }]);
+            return { success: false, errors: [{ message: msg }] };
+        }
+    }, [token, logout]);
+
     // Save project (commit=true gera registro no histórico de alterações)
     const saveProject = useCallback(async (projectData, commit = false) => {
         try {
@@ -269,7 +289,7 @@ export function useBackend() {
     const clearLogs = useCallback(() => setLogs([]), []);
 
     return {
-        status, logs, compile,
+        status, logs, compile, compileEpub,
         saveProject, loadProject, listProjects, deleteProject, migrateLegacyProjects,
         clearLogs, checkHealth, getAISettings, saveAISettings, transformText,
         listCommits, getCommitDiffs, listBlockHistory, exportProjectBackup, importProjectBackup

@@ -8,6 +8,7 @@ import { PreviewPanel } from '../components/PreviewPanel.jsx';
 import { ExportTexModal, ConfirmDeleteModal } from '../components/Modals.jsx';
 import { ProjectStore, DEFAULT_PROJECT } from '../store/projectStore.js';
 import { generateTex } from '../lib/latexGenerator.js';
+import { buildEpubData } from '../lib/epubDataBuilder.js';
 import { useBackend } from '../hooks/useBackend.js';
 import { TipTapDrawer } from '../components/TipTapDrawer.jsx';
 import { BLOCK_TYPES } from '../lib/blockTypes.js';
@@ -54,8 +55,10 @@ export default function Editor() {
   const [inspectorTab, setInspectorTab] = useState('block');
   const [actionsOpen, setActionsOpen] = useState(false);
   const actionsRef = useRef(null);
+  const [compileMenuOpen, setCompileMenuOpen] = useState(false);
+  const compileMenuRef = useRef(null);
 
-  const { status, logs, compile, saveProject, loadProject, clearLogs, exportProjectBackup } = useBackend();
+  const { status, logs, compile, compileEpub, saveProject, loadProject, clearLogs, exportProjectBackup } = useBackend();
   const [loading, setLoading] = useState(true);
 
   // Load project by ID or init new
@@ -137,7 +140,7 @@ export default function Editor() {
     setTimeout(() => setNotification(null), 3000);
   }, []);
 
-  // Compile
+  // Compile PDF (fluxo LaTeX existente)
   const handleCompile = useCallback(async () => {
     if (compiling) return;
     setCompiling(true);
@@ -169,6 +172,7 @@ export default function Editor() {
     const result = await compile(texContent, project.global_setup.engine || 'pdflatex', compileAssets);
 
     setCompiling(false);
+    setCompileMenuOpen(false);
 
     if (result.success) {
       setPdfBase64(result.pdf_base64);
@@ -182,6 +186,52 @@ export default function Editor() {
       // setShowLog(false); 
     }
   }, [compiling, getTexContent, project.global_setup.engine, compile, clearLogs, showNotification]);
+
+  // Compile EPUB (gera e-book via endpoint dedicado)
+  const handleCompileEpub = useCallback(async () => {
+    if (compiling) return;
+    setCompiling(true);
+    setShowLog(true);
+    setPdfBase64(null);
+    clearLogs();
+
+    const epubData = buildEpubData(project);
+    const result = await compileEpub(epubData);
+
+    setCompiling(false);
+    setCompileMenuOpen(false);
+
+    if (result.success && result.epub_base64) {
+      // Baixa o .epub gerado diretamente
+      const bytes = atob(result.epub_base64);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      const blob = new Blob([arr], { type: 'application/epub+zip' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = (project.metadata?.title || 'livro').replace(/[^a-z0-9]/gi, '_');
+      a.download = `${safeTitle}.epub`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showNotification('✅ EPUB gerado com sucesso!', 'success');
+      setShowLog(false);
+    } else {
+      const errorMsg = result.errors?.[0]?.message || 'Erro desconhecido';
+      showNotification(`❌ Erro ao gerar EPUB: ${errorMsg}`, 'error');
+    }
+  }, [compiling, project, compileEpub, clearLogs, showNotification]);
+
+  // Callback único chamado pelo botão Compilar (delega pelo formato)
+  const runCompile = useCallback((format) => {
+    if (format === 'epub') {
+      handleCompileEpub();
+    } else {
+      handleCompile();
+    }
+  }, [handleCompile, handleCompileEpub]);
 
   // Block operations
   const handleAddBlock = useCallback((type, afterId = null) => {
@@ -284,6 +334,18 @@ export default function Editor() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [actionsOpen]);
+
+  // Fecha menu de compilar ao clicar fora
+  useEffect(() => {
+    if (!compileMenuOpen) return;
+    const handler = (e) => {
+      if (compileMenuRef.current && !compileMenuRef.current.contains(e.target)) {
+        setCompileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [compileMenuOpen]);
 
   return (
     <div className="app-layout">
@@ -398,15 +460,30 @@ export default function Editor() {
             )}
           </div>
 
-          {/* Compile - standalone */}
-          <button
-            className="btn btn-compile"
-            onClick={handleCompile}
-            disabled={compiling || project.blocks.length === 0}
-            title="Compilar PDF"
-          >
-            {compiling ? <><div className="spinner" /> Compilando…</> : <>⚡ Compilar PDF</>}
-          </button>
+          {/* Compile - dropdown PDF/EPUB */}
+          <div style={{ position: 'relative' }} ref={compileMenuRef}>
+            <button
+              className="btn btn-compile"
+              onClick={() => setCompileMenuOpen(o => !o)}
+              disabled={compiling || project.blocks.length === 0}
+              title="Compilar documento"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              {compiling ? <><div className="spinner" /> Compilando…</> : <>⚡ Compilar <ChevronDown /></>}
+            </button>
+            {compileMenuOpen && !compiling && (
+              <div className="actions-dropdown" style={{ right: 0 }}>
+                <button className="dropdown-item" onClick={() => runCompile('pdf')}>
+                  📄 PDF
+                  <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)' }}>LaTeX</span>
+                </button>
+                <button className="dropdown-item" onClick={() => runCompile('epub')}>
+                  📖 EPUB
+                  <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'var(--text-muted)' }}>e-book</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
